@@ -136,8 +136,10 @@ const state = {
   bubbles: [],
   stainsOnShirt: [],
   feedback: [],
+  impactEffects: [],
   flashMessage: "PROTEGE TU CAMISETA",
   impactBurst: 0,
+  screenShake: 0,
   activeSide: null,
   activeSideTime: 0,
   result: null,
@@ -326,9 +328,11 @@ function resetSceneObjects() {
   state.bubbles = [];
   state.stainsOnShirt = [];
   state.feedback = [];
+  state.impactEffects = [];
   state.activeSide = null;
   state.activeSideTime = 0;
   state.impactBurst = 0;
+  state.screenShake = 0;
 }
 
 function resetRun() {
@@ -522,6 +526,7 @@ function update(dt) {
   } else if (state.mode === "result") {
     updateDirt(dt, false);
     updateBubbles(dt);
+    updateImpactEffects(dt);
     if (state.screenTimer >= GAME_CONFIG.resultSeconds) {
       showStartScreen();
     }
@@ -542,6 +547,7 @@ function update(dt) {
     updateDirt(dt, true);
     updateSplashes(dt);
     updateBubbles(dt);
+    updateImpactEffects(dt);
     handleSprayCollisions();
 
     state.dirt = state.dirt.filter((dirt) => {
@@ -552,6 +558,10 @@ function update(dt) {
 
     if (state.impactBurst > 0) {
       state.impactBurst = Math.max(0, state.impactBurst - dt);
+    }
+
+    if (state.screenShake > 0) {
+      state.screenShake = Math.max(0, state.screenShake - dt);
     }
 
     if (state.activeSideTime > 0) {
@@ -570,6 +580,7 @@ function update(dt) {
     }
   } else {
     updateBubbles(dt);
+    updateImpactEffects(dt);
     updateFeedback(dt);
   }
 
@@ -737,8 +748,8 @@ function updateDirt(dt, applyHits) {
       dirt.vx *= 0.08;
       dirt.vy *= 0.08;
       dirt.spin *= 0.2;
-      addScore(-dirt.penalty, shirtHit.x, shirtHit.y, "TOCO LA CAMISETA", "#ff6f7d");
-      state.impactBurst = 0.35;
+      addScore(-dirt.penalty, shirtHit.x, shirtHit.y, `-${dirt.penalty}%`, "#ff6f7d");
+      triggerShirtImpact(dirt, shirtHit);
       state.stainsOnShirt.push({
         x: shirtHit.x,
         y: shirtHit.y,
@@ -780,11 +791,72 @@ function updateBubbles(dt) {
   });
 }
 
+function updateImpactEffects(dt) {
+  state.impactEffects = state.impactEffects.filter((effect) => {
+    effect.age += dt;
+
+    for (const particle of effect.particles) {
+      particle.x += particle.vx * dt;
+      particle.y += particle.vy * dt;
+      particle.vy += 680 * dt;
+      particle.life -= dt;
+      particle.rotation += particle.spin * dt;
+    }
+
+    effect.particles = effect.particles.filter((particle) => particle.life > 0);
+    return effect.age < effect.maxAge || effect.particles.length > 0;
+  });
+}
+
 function updateFeedback(dt) {
   state.feedback = state.feedback.filter((item) => {
     item.age += dt;
     item.y += item.vy * dt;
     return item.age < item.maxAge;
+  });
+}
+
+function triggerShirtImpact(dirt, hit) {
+  state.impactBurst = 0.55;
+  state.screenShake = Math.max(state.screenShake, 0.46);
+
+  state.feedback.push({
+    text: "MANCHA!",
+    x: clamp(hit.x, 110, W - 110),
+    y: Math.max(220, hit.y - 42),
+    vy: -72,
+    age: 0,
+    maxAge: 0.88,
+    color: "#ff4157",
+    stroke: "#ffffff",
+    size: 42,
+  });
+
+  state.impactEffects.push({
+    x: hit.x,
+    y: hit.y,
+    age: 0,
+    maxAge: 0.78,
+    color: dirt.sprite,
+    ringColor: dirt.kind === "pasto" ? "#a6ff7a" : "#ff775f",
+    particles: Array.from({ length: 26 }, () => {
+      const angle = randomBetween(0, Math.PI * 2);
+      const speed = randomBetween(110, 360);
+      return {
+        x: hit.x + randomBetween(-8, 8),
+        y: hit.y + randomBetween(-8, 8),
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - randomBetween(60, 160),
+        radius: randomBetween(5, 15),
+        life: randomBetween(0.34, 0.72),
+        maxLife: 0.72,
+        rotation: randomBetween(0, Math.PI * 2),
+        spin: randomBetween(-5, 5),
+        color: DIRT_TYPES.find((type) => type.kind === dirt.kind)?.palette[
+          Math.floor(randomBetween(0, 4))
+        ] || "#8d5a37",
+      };
+    }),
   });
 }
 
@@ -968,6 +1040,16 @@ function draw() {
     return;
   }
 
+  const shake = getScreenShakeOffset();
+  ctx.save();
+  if (shake.power > 0) {
+    ctx.translate(shake.x, shake.y);
+    const scale = 1 + shake.power * 0.012;
+    ctx.translate(CENTER_X, H / 2);
+    ctx.scale(scale, scale);
+    ctx.translate(-CENTER_X, -H / 2);
+  }
+
   drawBackground();
   drawStageGlow();
   drawShirt();
@@ -975,10 +1057,27 @@ function draw() {
   drawDirt();
   drawSplashes();
   drawBubbles();
-  drawCanvasHud();
+  drawImpactEffects();
   drawSoapControls();
   drawFeedback();
+  ctx.restore();
+
+  drawCanvasHud();
   drawImpactFlash();
+}
+
+function getScreenShakeOffset() {
+  if (state.screenShake <= 0) {
+    return { x: 0, y: 0, power: 0 };
+  }
+
+  const power = state.screenShake / 0.46;
+  const magnitude = 18 * power;
+  return {
+    x: Math.sin(state.time * 92) * magnitude,
+    y: Math.cos(state.time * 127) * magnitude * 0.72,
+    power,
+  };
 }
 
 function drawBackground() {
@@ -1324,6 +1423,46 @@ function drawBubbles() {
   ctx.restore();
 }
 
+function drawImpactEffects() {
+  ctx.save();
+  for (const effect of state.impactEffects) {
+    const progress = Math.min(1, effect.age / effect.maxAge);
+    const alpha = Math.max(0, 1 - progress);
+    const ringRadius = 34 + progress * 118;
+
+    ctx.globalAlpha = alpha * 0.9;
+    ctx.strokeStyle = effect.ringColor;
+    ctx.lineWidth = 10 * alpha + 2;
+    ctx.beginPath();
+    ctx.arc(effect.x, effect.y, ringRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.globalAlpha = alpha * 0.36;
+    ctx.fillStyle = effect.ringColor;
+    ctx.beginPath();
+    ctx.arc(effect.x, effect.y, ringRadius * 0.58, 0, Math.PI * 2);
+    ctx.fill();
+
+    for (const particle of effect.particles) {
+      const particleAlpha = Math.max(0, particle.life / particle.maxLife);
+      ctx.save();
+      ctx.globalAlpha = particleAlpha;
+      ctx.translate(particle.x, particle.y);
+      ctx.rotate(particle.rotation);
+      ctx.fillStyle = particle.color;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, particle.radius, particle.radius * 0.62, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.32)";
+      ctx.beginPath();
+      ctx.arc(-particle.radius * 0.24, -particle.radius * 0.22, particle.radius * 0.28, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+  ctx.restore();
+}
+
 function drawCanvasHud() {
   drawScorePanel();
 }
@@ -1569,8 +1708,13 @@ function drawFeedback() {
   for (const item of state.feedback) {
     const alpha = Math.max(0, 1 - item.age / item.maxAge);
     ctx.globalAlpha = alpha;
+    ctx.font = `700 ${item.size || 26}px Trebuchet MS`;
+    if (item.stroke) {
+      ctx.lineWidth = 7;
+      ctx.strokeStyle = item.stroke;
+      ctx.strokeText(item.text, item.x, item.y);
+    }
     ctx.fillStyle = item.color;
-    ctx.font = "700 26px Trebuchet MS";
     ctx.fillText(item.text, item.x, item.y);
   }
   ctx.restore();
@@ -1582,10 +1726,20 @@ function drawImpactFlash() {
   }
 
   ctx.save();
-  ctx.globalAlpha = state.impactBurst / 0.35;
-  ctx.strokeStyle = "rgba(255, 83, 92, 0.7)";
-  ctx.lineWidth = 22;
-  ctx.strokeRect(11, 11, W - 22, H - 22);
+  const power = state.impactBurst / 0.55;
+  ctx.globalAlpha = power * 0.18;
+  ctx.fillStyle = "#ff2d42";
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.globalAlpha = power;
+  ctx.strokeStyle = "rgba(255, 50, 70, 0.9)";
+  ctx.lineWidth = 26;
+  ctx.strokeRect(13, 13, W - 26, H - 26);
+
+  ctx.globalAlpha = power * 0.7;
+  ctx.strokeStyle = "rgba(255,255,255,0.55)";
+  ctx.lineWidth = 4;
+  ctx.strokeRect(34, 34, W - 68, H - 68);
   ctx.restore();
 }
 

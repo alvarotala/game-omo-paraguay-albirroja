@@ -133,3 +133,14 @@ Update 2026-05-01 HUD metrics:
 - Validaciones:
   - `node --check game.js`
   - `output/omo-hud-two-metrics`
+
+Update 2026-05-01 arcade impacts:
+- Impactos de suciedad contra camiseta ahora disparan un evento visual completo.
+- Agregado screen shake sobre el mundo de juego, manteniendo el HUD estable.
+- Agregado flash rojo mas dramatico con borde doble.
+- Agregada onda expansiva circular en el punto de impacto.
+- Agregadas particulas de suciedad con fisica simple.
+- Feedback de impacto ahora muestra `MANCHA!` grande con contorno, ademas del puntaje negativo.
+- Validaciones:
+  - `node --check game.js`
+  - `output/omo-arcade-impacts`: capturas con impactos multiples visibles y sin errores.
