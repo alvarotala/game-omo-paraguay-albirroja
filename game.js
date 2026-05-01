@@ -1333,6 +1333,10 @@ function drawScorePanel() {
   const y = 26;
   const width = W - 64;
   const height = 150;
+  const trackX = x + 68;
+  const trackY = y + 96;
+  const trackWidth = width - 136;
+  const trackEndX = trackX + trackWidth;
 
   ctx.save();
   ctx.fillStyle = "rgba(3, 16, 39, 0.68)";
@@ -1345,17 +1349,20 @@ function drawScorePanel() {
 
   ctx.fillStyle = "rgba(255,255,255,0.72)";
   ctx.font = "700 17px Trebuchet MS";
-  ctx.fillText("PUNTAJE", x + 24, y + 34);
-  ctx.fillText("TIEMPO", x + 248, y + 34);
-  ctx.fillText("PREMIO", x + 480, y + 34);
+  ctx.textAlign = "left";
+  ctx.fillText("PUNTAJE", trackX, y + 34);
+  ctx.textAlign = "right";
+  ctx.fillText("TIEMPO", trackEndX, y + 34);
 
   ctx.fillStyle = "#ffffff";
   ctx.font = "700 34px Trebuchet MS";
-  ctx.fillText(`${Math.round(state.score)}%`, x + 24, y + 72);
-  ctx.fillText(`${Math.ceil(state.timeLeft)}s`, x + 248, y + 72);
-  ctx.fillText(`${state.prizeLevel}/4`, x + 480, y + 72);
+  ctx.textAlign = "left";
+  ctx.fillText(`${Math.round(state.score)}%`, trackX, y + 72);
+  ctx.textAlign = "right";
+  ctx.fillText(`${Math.ceil(state.timeLeft)}s`, trackEndX, y + 72);
 
-  drawProgressTrack(x + 68, y + 96, width - 136, 18, state.score, state.prizeLevel);
+  ctx.textAlign = "left";
+  drawProgressTrack(trackX, trackY, trackWidth, 18, state.score, state.prizeLevel);
   ctx.restore();
 }
 

@@ -124,3 +124,12 @@ Update 2026-05-01 visual wider rays:
   - `node --check game.js`
   - `output/omo-visual-wider-rays`
   - Browser interno refrescado contra `http://localhost:8000/`, sin errores de consola.
+
+Update 2026-05-01 HUD metrics:
+- Quitado `PREMIO 0/4` del HUD principal durante gameplay.
+- `PUNTAJE` queda alineado al inicio de la barra de niveles.
+- `TIEMPO` queda alineado al final de la barra de niveles.
+- La barra y labels de niveles se mantienen iguales.
+- Validaciones:
+  - `node --check game.js`
+  - `output/omo-hud-two-metrics`
