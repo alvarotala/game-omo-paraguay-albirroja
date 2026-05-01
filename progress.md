@@ -74,3 +74,21 @@ Update 2026-05-01 result lock:
   - `node --check game.js`
   - `output/omo-result-input-lock`: flechas durante resultado no cambian de pantalla.
   - `output/omo-result-timeout-start`: al terminar el timer configurable vuelve a inicio.
+
+Update 2026-05-01 wider spray:
+- El spray ahora abre como abanico usando varias trayectorias paralelas (`SPRAY_COLLISION_LANES` y `SPRAY_VISUAL_LANES`).
+- Los targets del spray subieron hasta la zona alta de camiseta/cuello para poder limpiar suciedad que entra desde arriba.
+- Se aumento el ancho de colision y el margen del lado correcto para que manchas ya metidas cerca del torso no queden imposibles.
+- Las burbujas/espuma se distribuyen por todo el abanico, no solo en el rayo central.
+- Validaciones:
+  - `node --check game.js`
+  - `output/omo-wider-spray`: gameplay con spray mas alto/ancho; en corrida corta llego a 27% y desbloqueo Nivel 1.
+
+Update 2026-05-01 HUD thresholds:
+- Reajustado el HUD de scoring para que los marcadores representen exactamente 25/50/75/100.
+- Los circulos ahora estan sobre la barra y los labels quedan dentro del panel, no por debajo.
+- Nivel 4 queda contenido visualmente aunque represente 100%.
+- Validaciones:
+  - `node --check game.js`
+  - `output/omo-hud-thresholds`
+  - Browser interno refrescado contra `http://localhost:8000/`, sin errores de consola.

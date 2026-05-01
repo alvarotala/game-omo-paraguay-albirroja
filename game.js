@@ -77,7 +77,7 @@ const SPRAY_CONFIG = {
     originX: W * 0.14,
     originY: H * 0.91,
     targetX: W * 0.4,
-    targetY: H * 0.42,
+    targetY: H * 0.34,
     direction: 1,
     color: "#58d9ff",
     accent: "#0a8fea",
@@ -87,13 +87,16 @@ const SPRAY_CONFIG = {
     originX: W * 0.86,
     originY: H * 0.91,
     targetX: W * 0.6,
-    targetY: H * 0.42,
+    targetY: H * 0.34,
     direction: -1,
     color: "#70ffc1",
     accent: "#12a06a",
     label: "DERECHA",
   },
 };
+
+const SPRAY_COLLISION_LANES = [-0.48, 0, 0.48];
+const SPRAY_VISUAL_LANES = [-0.62, -0.31, 0, 0.31, 0.62];
 
 const images = {
   background: loadImage("./assets/fondo.png"),
@@ -210,30 +213,48 @@ function getPrizeLabel(level) {
   return PRIZE_LEVELS[level - 1].prize;
 }
 
-function getSprayPoint(config, t) {
-  const controlX = CENTER_X;
-  const controlY = H * 0.6;
+function getSprayPoint(config, t, lane = 0) {
+  const fan = 1 - (1 - t) * (1 - t);
+  const originX = config.originX + lane * 10;
+  const targetX = config.targetX + lane * 72;
+  const targetY = config.targetY + Math.abs(lane) * 38;
+  const controlX = CENTER_X + lane * 48 * fan;
+  const controlY = H * 0.56 - Math.abs(lane) * 12;
   const inv = 1 - t;
   return {
-    x: inv * inv * config.originX + 2 * inv * t * controlX + t * t * config.targetX,
-    y: inv * inv * config.originY + 2 * inv * t * controlY + t * t * config.targetY,
+    x: inv * inv * originX + 2 * inv * t * controlX + t * t * targetX,
+    y: inv * inv * config.originY + 2 * inv * t * controlY + t * t * targetY,
   };
 }
 
 function distanceToSprayPath(px, py, config) {
-  let previous = getSprayPoint(config, 0);
   let closest = Infinity;
 
-  for (let index = 1; index <= 14; index += 1) {
-    const current = getSprayPoint(config, index / 14);
-    closest = Math.min(
-      closest,
-      distanceToSegment(px, py, previous.x, previous.y, current.x, current.y),
-    );
-    previous = current;
+  for (const lane of SPRAY_COLLISION_LANES) {
+    let previous = getSprayPoint(config, 0, lane);
+
+    for (let index = 1; index <= 18; index += 1) {
+      const current = getSprayPoint(config, index / 18, lane);
+      closest = Math.min(
+        closest,
+        distanceToSegment(px, py, previous.x, previous.y, current.x, current.y),
+      );
+      previous = current;
+    }
   }
 
   return closest;
+}
+
+function drawSprayCurve(config, lane) {
+  ctx.beginPath();
+  const start = getSprayPoint(config, 0, lane);
+  ctx.moveTo(start.x, start.y);
+
+  for (let index = 1; index <= 18; index += 1) {
+    const point = getSprayPoint(config, index / 18, lane);
+    ctx.lineTo(point.x, point.y);
+  }
 }
 
 function distanceToSegment(px, py, ax, ay, bx, by) {
@@ -421,39 +442,42 @@ function shoot(side) {
     side,
     age: 0,
     maxAge: 0.5,
-    width: 92,
-    foam: Array.from({ length: 34 }, () => {
-      const t = randomBetween(0, 0.36);
-      const point = getSprayPoint(config, t);
+    width: 124,
+    foam: Array.from({ length: 52 }, () => {
+      const t = randomBetween(0, 0.72);
+      const lane = randomBetween(-1, 1);
+      const point = getSprayPoint(config, t, lane);
       return {
-        x: point.x + randomBetween(-16, 16),
-        y: point.y + randomBetween(-16, 16),
+        x: point.x + randomBetween(-22, 22),
+        y: point.y + randomBetween(-22, 22),
         vx:
-          config.direction * randomBetween(270, 420) +
+          config.direction * randomBetween(230, 360) +
+          lane * randomBetween(40, 110) +
           randomBetween(-spread, spread),
-        vy: -randomBetween(430, 690),
-        radius: randomBetween(4, 11),
-        life: randomBetween(0.25, 0.52),
-        maxLife: 0.52,
+        vy: -randomBetween(330, 560),
+        radius: randomBetween(5, 14),
+        life: randomBetween(0.3, 0.6),
+        maxLife: 0.6,
       };
     }),
   });
 
-  spawnBubbleStream(side, 26);
+  spawnBubbleStream(side, 40);
 }
 
 function spawnBubbleStream(side, amount) {
   const config = SPRAY_CONFIG[side];
   for (let index = 0; index < amount; index += 1) {
-    const t = randomBetween(0.08, 0.86);
-    const point = getSprayPoint(config, t);
+    const t = randomBetween(0.08, 0.96);
+    const lane = randomBetween(-1, 1);
+    const point = getSprayPoint(config, t, lane);
     const drift = config.direction * randomBetween(18, 90);
     state.bubbles.push({
-      x: point.x + randomBetween(-30, 30),
-      y: point.y + randomBetween(-34, 34),
-      vx: drift + randomBetween(-45, 45),
-      vy: -randomBetween(55, 145),
-      radius: randomBetween(5, 18),
+      x: point.x + randomBetween(-38, 38),
+      y: point.y + randomBetween(-38, 38),
+      vx: drift + lane * randomBetween(25, 80) + randomBetween(-45, 45),
+      vy: -randomBetween(45, 135),
+      radius: randomBetween(6, 22),
       age: 0,
       maxAge: randomBetween(0.75, 1.35),
       color: side === "left" ? "rgba(88,217,255," : "rgba(112,255,193,",
@@ -767,7 +791,7 @@ function handleSprayCollisions() {
   for (const splash of state.splashes) {
     const config = SPRAY_CONFIG[splash.side];
     const beamStrength = 1 - splash.age / splash.maxAge;
-    const beamWidth = splash.width * (0.72 + beamStrength * 0.48);
+    const beamWidth = splash.width * (0.78 + beamStrength * 0.56);
 
     for (const dirt of state.dirt) {
       if (dirt.cleaned) {
@@ -775,9 +799,9 @@ function handleSprayCollisions() {
       }
 
       const nearBeam =
-        distanceToSprayPath(dirt.x, dirt.y, config) < beamWidth + dirt.radius * 1.2;
+        distanceToSprayPath(dirt.x, dirt.y, config) < beamWidth + dirt.radius * 1.45;
       const sameHalf =
-        splash.side === "left" ? dirt.x <= CENTER_X + 76 : dirt.x >= CENTER_X - 76;
+        splash.side === "left" ? dirt.x <= CENTER_X + 150 : dirt.x >= CENTER_X - 150;
       const foamContact = splash.foam.some((particle) => {
         if (particle.life <= 0) {
           return false;
@@ -1209,29 +1233,31 @@ function drawSplashes() {
   for (const splash of state.splashes) {
     const spray = SPRAY_CONFIG[splash.side];
     const alpha = Math.max(0, 1 - splash.age / splash.maxAge);
-    const width = splash.width * (0.58 + alpha * 0.44);
+    const width = splash.width * (0.48 + alpha * 0.32);
 
-    ctx.save();
-    ctx.globalAlpha = 0.16 + alpha * 0.28;
-    ctx.strokeStyle = spray.color;
-    ctx.lineWidth = width;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(spray.originX, spray.originY);
-    ctx.quadraticCurveTo(CENTER_X, H * 0.6, spray.targetX, spray.targetY);
-    ctx.stroke();
-    ctx.restore();
+    for (const lane of SPRAY_VISUAL_LANES) {
+      const laneFalloff = 1 - Math.abs(lane) * 0.34;
 
-    ctx.save();
-    ctx.globalAlpha = 0.45 + alpha * 0.33;
-    ctx.strokeStyle = "rgba(255,255,255,0.88)";
-    ctx.lineWidth = 9;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(spray.originX, spray.originY);
-    ctx.quadraticCurveTo(CENTER_X, H * 0.6, spray.targetX, spray.targetY);
-    ctx.stroke();
-    ctx.restore();
+      ctx.save();
+      ctx.globalAlpha = (0.13 + alpha * 0.24) * laneFalloff;
+      ctx.strokeStyle = spray.color;
+      ctx.lineWidth = width * (0.38 + laneFalloff * 0.28);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      drawSprayCurve(spray, lane);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = (0.34 + alpha * 0.32) * laneFalloff;
+      ctx.strokeStyle = "rgba(255,255,255,0.86)";
+      ctx.lineWidth = 5 + laneFalloff * 6;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      drawSprayCurve(spray, lane * 0.72);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     for (const particle of splash.foam) {
       const particleAlpha = Math.max(0, particle.life / particle.maxLife);
@@ -1324,18 +1350,42 @@ function drawProgressTrack(x, y, width, height, score, prizeLevel) {
   ctx.fillRect(x, y, width, height);
   ctx.restore();
 
-  ctx.font = "700 15px Trebuchet MS";
+  const markerY = y + height / 2;
+  const labelY = y + 44;
+
+  ctx.save();
+  ctx.globalAlpha = 0.28;
+  ctx.strokeStyle = "rgba(255,255,255,0.8)";
+  ctx.lineWidth = 2;
+  for (let index = 0; index < PRIZE_LEVELS.length - 1; index += 1) {
+    const dividerX = x + width * (PRIZE_LEVELS[index].threshold / 100);
+    ctx.beginPath();
+    ctx.moveTo(dividerX, y + 3);
+    ctx.lineTo(dividerX, y + height - 3);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.font = "700 14px Trebuchet MS";
   ctx.textAlign = "center";
   for (let index = 0; index < PRIZE_LEVELS.length; index += 1) {
     const prize = PRIZE_LEVELS[index];
     const cx = x + width * (prize.threshold / 100);
+    const labelX = clamp(cx, x + 34, x + width - 34);
     const unlocked = index < prizeLevel;
-    ctx.fillStyle = unlocked ? prize.color : "rgba(255,255,255,0.42)";
+
+    ctx.fillStyle = "rgba(2, 12, 30, 0.48)";
     ctx.beginPath();
-    ctx.arc(cx, y + height + 23, 10, 0, Math.PI * 2);
+    ctx.arc(cx, markerY, 13, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.fillStyle = unlocked ? prize.color : "rgba(255,255,255,0.5)";
+    ctx.beginPath();
+    ctx.arc(cx, markerY, 9, 0, Math.PI * 2);
+    ctx.fill();
+
     ctx.fillStyle = unlocked ? "#ffffff" : "rgba(255,255,255,0.6)";
-    ctx.fillText(prize.label, cx, y + height + 50);
+    ctx.fillText(prize.label, labelX, labelY);
   }
   ctx.textAlign = "left";
 }
