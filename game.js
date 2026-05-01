@@ -96,7 +96,8 @@ const SPRAY_CONFIG = {
 };
 
 const SPRAY_COLLISION_LANES = [-0.48, 0, 0.48];
-const SPRAY_VISUAL_LANES = [-0.62, -0.31, 0, 0.31, 0.62];
+const SPRAY_VISUAL_LANES = [-1.12, -0.62, 0, 0.62, 1.12];
+const SHIRT_DEFENSE_MARGIN = 62;
 
 const images = {
   background: loadImage("./assets/fondo.png"),
@@ -216,10 +217,10 @@ function getPrizeLabel(level) {
 function getSprayPoint(config, t, lane = 0) {
   const fan = 1 - (1 - t) * (1 - t);
   const originX = config.originX + lane * 10;
-  const targetX = config.targetX + lane * 72;
-  const targetY = config.targetY + Math.abs(lane) * 38;
-  const controlX = CENTER_X + lane * 48 * fan;
-  const controlY = H * 0.56 - Math.abs(lane) * 12;
+  const targetX = config.targetX + lane * 92;
+  const targetY = config.targetY + Math.abs(lane) * 46;
+  const controlX = CENTER_X + lane * 64 * fan;
+  const controlY = H * 0.56 - Math.abs(lane) * 18;
   const inv = 1 - t;
   return {
     x: inv * inv * originX + 2 * inv * t * controlX + t * t * targetX,
@@ -442,42 +443,42 @@ function shoot(side) {
     side,
     age: 0,
     maxAge: 0.5,
-    width: 124,
-    foam: Array.from({ length: 52 }, () => {
-      const t = randomBetween(0, 0.72);
-      const lane = randomBetween(-1, 1);
+    width: 104,
+    foam: Array.from({ length: 46 }, () => {
+      const t = randomBetween(0, 0.68);
+      const lane = randomBetween(-1.05, 1.05);
       const point = getSprayPoint(config, t, lane);
       return {
-        x: point.x + randomBetween(-22, 22),
-        y: point.y + randomBetween(-22, 22),
+        x: point.x + randomBetween(-18, 18),
+        y: point.y + randomBetween(-18, 18),
         vx:
-          config.direction * randomBetween(230, 360) +
-          lane * randomBetween(40, 110) +
+          config.direction * randomBetween(230, 330) +
+          lane * randomBetween(28, 76) +
           randomBetween(-spread, spread),
-        vy: -randomBetween(330, 560),
-        radius: randomBetween(5, 14),
-        life: randomBetween(0.3, 0.6),
+        vy: -randomBetween(310, 510),
+        radius: randomBetween(5, 12),
+        life: randomBetween(0.28, 0.56),
         maxLife: 0.6,
       };
     }),
   });
 
-  spawnBubbleStream(side, 40);
+  spawnBubbleStream(side, 36);
 }
 
 function spawnBubbleStream(side, amount) {
   const config = SPRAY_CONFIG[side];
   for (let index = 0; index < amount; index += 1) {
-    const t = randomBetween(0.08, 0.96);
-    const lane = randomBetween(-1, 1);
+    const t = randomBetween(0.08, 0.92);
+    const lane = randomBetween(-1.05, 1.05);
     const point = getSprayPoint(config, t, lane);
     const drift = config.direction * randomBetween(18, 90);
     state.bubbles.push({
-      x: point.x + randomBetween(-38, 38),
-      y: point.y + randomBetween(-38, 38),
-      vx: drift + lane * randomBetween(25, 80) + randomBetween(-45, 45),
+      x: point.x + randomBetween(-28, 28),
+      y: point.y + randomBetween(-30, 30),
+      vx: drift + lane * randomBetween(18, 58) + randomBetween(-42, 42),
       vy: -randomBetween(45, 135),
-      radius: randomBetween(6, 22),
+      radius: randomBetween(5, 18),
       age: 0,
       maxAge: randomBetween(0.75, 1.35),
       color: side === "left" ? "rgba(88,217,255," : "rgba(112,255,193,",
@@ -789,31 +790,60 @@ function updateFeedback(dt) {
 
 function handleSprayCollisions() {
   for (const splash of state.splashes) {
-    const config = SPRAY_CONFIG[splash.side];
-    const beamStrength = 1 - splash.age / splash.maxAge;
-    const beamWidth = splash.width * (0.78 + beamStrength * 0.56);
-
     for (const dirt of state.dirt) {
       if (dirt.cleaned) {
         continue;
       }
 
-      const nearBeam =
-        distanceToSprayPath(dirt.x, dirt.y, config) < beamWidth + dirt.radius * 1.45;
-      const sameHalf =
-        splash.side === "left" ? dirt.x <= CENTER_X + 150 : dirt.x >= CENTER_X - 150;
-      const foamContact = splash.foam.some((particle) => {
-        if (particle.life <= 0) {
-          return false;
-        }
-        return Math.hypot(dirt.x - particle.x, dirt.y - particle.y) < dirt.radius + particle.radius;
-      });
-
-      if ((nearBeam && sameHalf) || foamContact) {
+      if (isDirtInShirtDefenseZone(dirt, splash.side)) {
         cleanDirt(dirt);
       }
     }
   }
+}
+
+function isDirtInEffectiveSprayZone(dirt, side) {
+  const enteredHorizontally = side === "left" ? dirt.x > W * 0.14 : dirt.x < W * 0.86;
+  const insideVerticalBand = dirt.y > H * 0.22 && dirt.y < H * 0.76;
+  return enteredHorizontally && insideVerticalBand;
+}
+
+function isDirtInShirtDefenseZone(dirt, side) {
+  if (!isDirtInEffectiveSprayZone(dirt, side)) {
+    return false;
+  }
+
+  if (dirt.source !== side) {
+    return false;
+  }
+
+  const sideGate = side === "left" ? dirt.x <= CENTER_X + 126 : dirt.x >= CENTER_X - 126;
+  if (!sideGate) {
+    return false;
+  }
+
+  const sampleRadii = [
+    0,
+    dirt.radius * 0.65,
+    dirt.radius + 14,
+    dirt.radius + 36,
+    dirt.radius + SHIRT_DEFENSE_MARGIN,
+  ];
+
+  for (const radius of sampleRadii) {
+    const steps = radius === 0 ? 1 : 16;
+    for (let index = 0; index < steps; index += 1) {
+      const angle = (index / steps) * Math.PI * 2;
+      const sampleX = dirt.x + Math.cos(angle) * radius;
+      const sampleY = dirt.y + Math.sin(angle) * radius;
+
+      if (shirtAlphaAtWorld(sampleX, sampleY) > 36) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 function cleanDirt(dirt) {
@@ -1233,7 +1263,7 @@ function drawSplashes() {
   for (const splash of state.splashes) {
     const spray = SPRAY_CONFIG[splash.side];
     const alpha = Math.max(0, 1 - splash.age / splash.maxAge);
-    const width = splash.width * (0.48 + alpha * 0.32);
+    const width = splash.width * (0.45 + alpha * 0.3);
 
     for (const lane of SPRAY_VISUAL_LANES) {
       const laneFalloff = 1 - Math.abs(lane) * 0.34;

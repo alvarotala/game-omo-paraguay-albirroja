@@ -92,3 +92,35 @@ Update 2026-05-01 HUD thresholds:
   - `node --check game.js`
   - `output/omo-hud-thresholds`
   - Browser interno refrescado contra `http://localhost:8000/`, sin errores de consola.
+
+Update 2026-05-01 spray rebalance:
+- Reducido el abanico del spray despues de quedar demasiado facil.
+- Lanes de colision bajaron de 5 a 3 y el ancho efectivo se redujo.
+- El spray mantiene alcance alto hacia hombros/cuello, pero tiene menos apertura lateral.
+- Agregada zona efectiva: una suciedad debe entrar aproximadamente 14% desde el borde antes de poder limpiarse.
+- Reducida cantidad/tamano de espuma para que el rayo no limpie desde casi todo el borde.
+- Validaciones:
+  - `node --check game.js`
+  - `output/omo-spray-rebalanced`
+  - `output/omo-spray-edge-gated`
+  - Browser interno refrescado contra `http://localhost:8000/`, sin errores de consola.
+
+Update 2026-05-01 shirt defense collision:
+- Separada la regla de gameplay de la animacion del rayo: el spray ahora es principalmente visual.
+- La limpieza se calcula con una zona defensiva alrededor de la mascara alfa real de la camiseta (`SHIRT_DEFENSE_MARGIN`).
+- Si la suciedad del lado correcto entra en el borde real de la remera + margen, el disparo la limpia aunque el rayo visual no pase exactamente por encima.
+- Esto vuelve alcanzables las mangas sin permitir limpiar suciedad apenas aparece en el borde de pantalla.
+- La animacion del spray se abrio un poco de nuevo para recuperar el look mas disperso anterior.
+- Validaciones:
+  - `node --check game.js`
+  - `output/omo-shirt-defense-zone`
+  - Browser interno refrescado contra `http://localhost:8000/`, sin errores de consola.
+
+Update 2026-05-01 visual wider rays:
+- Ampliada solo la animacion visual de los rayos hacia los costados de la remera.
+- `SPRAY_VISUAL_LANES` ahora abre mas, y espuma/burbujas usan un rango visual un poco mayor.
+- No se cambio la regla de colision/scoring basada en zona defensiva de camiseta.
+- Validaciones:
+  - `node --check game.js`
+  - `output/omo-visual-wider-rays`
+  - Browser interno refrescado contra `http://localhost:8000/`, sin errores de consola.
