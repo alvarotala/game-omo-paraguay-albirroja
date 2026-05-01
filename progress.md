@@ -33,3 +33,25 @@ Suggestions:
 - El inicio del flujo ahora usa solo izquierda/derecha. Desde la pantalla inicial, cualquiera de esos botones muestra instrucciones; las instrucciones avanzan solas al juego.
 - Al terminar, la pantalla de resultado muestra score/protección y vuelve automáticamente al inicio.
 - Capturas de verificación del nuevo flujo: `output/web-game-flow-start`, `output/web-game-flow-instructions`, `output/web-game-flow-playing`.
+
+Update 2026-05-01:
+- Nuevo flujo orientado a totem/TV: `attract` (protector visual/video futuro) -> `start` -> `instructions` -> `playing` -> `result` -> `attract`.
+- `GAME_CONFIG` quedó arriba de `game.js` para ajustar `roundSeconds`, `idleSeconds`, `instructionsSeconds`, `resultSeconds`, `difficulty`, `attractVideoSrc` y scoring.
+- Tambien se pueden probar overrides por query string: `?seconds=30&difficulty=1.2&idle=20&video=./assets/intro.mp4`.
+- La partida ahora es por tiempo configurable y el puntaje final va de 0 a 100%.
+- Premios por umbrales de 25/50/75/100%; si el resultado final queda debajo de 25%, muestra "Sin premio".
+- La suciedad ahora suma puntos si se limpia antes de tocar la camiseta y resta si impacta la remera.
+- Se agrando la camiseta, se redisenio el HUD para score/tiempo/premio, y se agregaron burbujas + rayos de jabon mas visibles.
+- La suciedad ya no es una elipse plana: se generan sprites procedurales con textura para barro, pasto, tierra y tinta.
+- CSS ajustado para TV fullscreen: el canvas ocupa el alto disponible manteniendo 9:16, sin el limite anterior de 520px.
+- Validaciones realizadas:
+  - `node --check game.js`
+  - `output/omo-attract`: protector visual.
+  - `output/omo-flow` y `output/omo-flow-after`: start/instrucciones/gameplay/resultado corto.
+  - `output/omo-idle`: retorno por inactividad al protector.
+  - Browser interno contra `http://localhost:8000/`, sin errores de consola.
+- Pendientes naturales:
+  - Reemplazar fallback de `attract` por el video real cuando este disponible usando `GAME_CONFIG.attractVideoSrc`.
+  - Conectar input local GPIO/serial via bridge Python y consumirlo desde JS.
+  - Definir nombres reales de los premios de Nivel 1-4.
+  - Ajustar `roundSeconds` y `difficulty` en pruebas reales con publico.
