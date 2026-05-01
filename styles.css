@@ -1,0 +1,59 @@
+:root {
+  color-scheme: light;
+  --bg-1: #051b38;
+  --bg-2: #0d4f7d;
+  --text-main: #f7fbff;
+  --shadow: rgba(0, 0, 0, 0.28);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.12), transparent 34%),
+    linear-gradient(180deg, var(--bg-2), var(--bg-1) 72%);
+  color: var(--text-main);
+}
+
+body {
+  display: flex;
+  justify-content: center;
+}
+
+.app-shell {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 18px;
+}
+
+.game-panel {
+  width: min(100%, 520px);
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#game-canvas {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  border-radius: 32px;
+  background: #0e2f54;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+}
+
+@media (max-width: 560px) {
+  .app-shell {
+    padding: 10px;
+  }
+}
