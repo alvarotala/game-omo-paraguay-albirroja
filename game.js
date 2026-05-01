@@ -384,6 +384,10 @@ function finishGame() {
 }
 
 function handleAction(side) {
+  if (state.mode === "result") {
+    return;
+  }
+
   state.idleTimer = 0;
 
   if (state.mode === "attract") {
@@ -404,10 +408,6 @@ function handleAction(side) {
   if (state.mode === "playing") {
     shoot(side);
     return;
-  }
-
-  if (state.mode === "result") {
-    showAttractScreen();
   }
 }
 
@@ -498,7 +498,7 @@ function update(dt) {
     updateDirt(dt, false);
     updateBubbles(dt);
     if (state.screenTimer >= GAME_CONFIG.resultSeconds) {
-      showAttractScreen();
+      showStartScreen();
     }
   } else if (state.mode === "playing") {
     state.roundElapsed += dt;
@@ -1135,7 +1135,7 @@ function drawResultScreen() {
   const remaining = Math.max(1, Math.ceil(GAME_CONFIG.resultSeconds - state.screenTimer));
   ctx.fillStyle = "rgba(255,255,255,0.7)";
   ctx.font = "600 26px Trebuchet MS";
-  ctx.fillText(`Volviendo al protector en ${remaining}`, CENTER_X, 1110);
+  ctx.fillText(`Volviendo al inicio en ${remaining}`, CENTER_X, 1110);
   ctx.restore();
 }
 
@@ -1299,7 +1299,7 @@ function drawScorePanel() {
   ctx.fillText(`${Math.ceil(state.timeLeft)}s`, x + 248, y + 72);
   ctx.fillText(`${state.prizeLevel}/4`, x + 480, y + 72);
 
-  drawProgressTrack(x + 24, y + 96, width - 48, 18, state.score, state.prizeLevel);
+  drawProgressTrack(x + 68, y + 96, width - 136, 18, state.score, state.prizeLevel);
   ctx.restore();
 }
 
@@ -1555,12 +1555,20 @@ function init() {
 }
 
 canvas.addEventListener("pointerdown", (event) => {
+  if (state.mode === "result") {
+    return;
+  }
+
   const rect = canvas.getBoundingClientRect();
   const x = ((event.clientX - rect.left) / rect.width) * W;
   handleAction(x < CENTER_X ? "left" : "right");
 });
 
 window.addEventListener("keydown", (event) => {
+  if (state.mode === "result") {
+    return;
+  }
+
   if (event.key.toLowerCase() === "f") {
     toggleFullscreen();
     return;
@@ -1590,6 +1598,7 @@ window.render_game_to_text = () =>
   JSON.stringify({
     coordinateSystem: "origin top-left, x to the right, y downward",
     mode: state.mode,
+    inputLocked: state.mode === "result",
     scorePercent: Math.round(state.score),
     prizeLevel: state.prizeLevel,
     finalScore: state.finalScore,

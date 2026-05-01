@@ -55,3 +55,22 @@ Update 2026-05-01:
   - Conectar input local GPIO/serial via bridge Python y consumirlo desde JS.
   - Definir nombres reales de los premios de Nivel 1-4.
   - Ajustar `roundSeconds` y `difficulty` en pruebas reales con publico.
+
+Update 2026-05-01 follow-up:
+- Sin `attractVideoSrc`, el juego ya no muestra protector fallback: arranca y vuelve a `start`.
+- La colision suciedad/camiseta ahora usa una mascara alfa generada desde `assets/remera.png`, en vez de rectangulo.
+- Las manchas se colocan en el punto real de contacto con la camiseta.
+- La deteccion del spray ahora sigue la curva visual del rayo, no una linea recta invisible.
+- Ajustado el target del spray para llegar mejor al torso alto y hombros.
+- El track de premios del HUD quedo insetado para alinear Nivel 1-4 con sus marcadores.
+- Validaciones: `node --check game.js`, `output/omo-no-video-start`, `output/omo-collision-hud`, y browser interno sin errores de consola.
+
+Update 2026-05-01 result lock:
+- Durante `result`, teclado y click quedan bloqueados; las flechas no pueden saltar la pantalla final.
+- El resultado ahora vuelve siempre a `start` despues de `GAME_CONFIG.resultSeconds`.
+- Texto final ajustado a "Volviendo al inicio".
+- `render_game_to_text` expone `inputLocked` para validar este estado.
+- Validaciones:
+  - `node --check game.js`
+  - `output/omo-result-input-lock`: flechas durante resultado no cambian de pantalla.
+  - `output/omo-result-timeout-start`: al terminar el timer configurable vuelve a inicio.
