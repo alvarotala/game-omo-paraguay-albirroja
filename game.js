@@ -124,6 +124,7 @@ const images = {
 
 const attractVideo = createAttractVideo();
 const audio = createAudioManager();
+const inputBridge = createInputBridge();
 
 const shirtMask = {
   canvas: document.createElement("canvas"),
@@ -164,6 +165,13 @@ const state = {
   finalScore: 0,
   finalPrizeLevel: 0,
   finalPrizeLabel: "Sin premio",
+  inputBridge: {
+    enabled: Boolean(GAME_CONFIG.inputBridgeUrl),
+    connected: false,
+    lastSide: null,
+    lastEventAt: 0,
+    reconnects: 0,
+  },
 };
 
 let rafId = 0;
@@ -188,6 +196,11 @@ function applyRuntimeOverrides() {
   const video = params.get("video");
   if (video) {
     GAME_CONFIG.attractVideoSrc = video;
+  }
+
+  const bridge = params.get("bridge") || params.get("inputBridge") || params.get("ws");
+  if (bridge) {
+    GAME_CONFIG.inputBridgeUrl = bridge;
   }
 
   const audioOverride = params.get("audio");
@@ -215,6 +228,91 @@ function loadImage(src) {
   const image = new Image();
   image.src = src;
   return image;
+}
+
+function createInputBridge() {
+  const url = GAME_CONFIG.inputBridgeUrl;
+  if (!url) {
+    return { connect() {} };
+  }
+
+  let socket = null;
+  let reconnectTimer = 0;
+  let reconnectDelay = 450;
+
+  function setStatus(connected) {
+    state.inputBridge.connected = connected;
+    state.inputBridge.enabled = true;
+  }
+
+  function scheduleReconnect() {
+    window.clearTimeout(reconnectTimer);
+    setStatus(false);
+    state.inputBridge.reconnects += 1;
+    reconnectTimer = window.setTimeout(connect, reconnectDelay);
+    reconnectDelay = Math.min(5000, reconnectDelay * 1.6);
+  }
+
+  function normalizeSide(message) {
+    if (typeof message === "string") {
+      const raw = message.trim().toLowerCase();
+      if (raw === "left" || raw === "l" || raw === "izquierda") {
+        return "left";
+      }
+      if (raw === "right" || raw === "r" || raw === "derecha") {
+        return "right";
+      }
+
+      try {
+        return normalizeSide(JSON.parse(raw));
+      } catch {
+        return null;
+      }
+    }
+
+    if (!message || typeof message !== "object") {
+      return null;
+    }
+
+    const rawSide = String(message.side || message.button || message.key || "").toLowerCase();
+    if (rawSide === "left" || rawSide === "l" || rawSide === "izquierda") {
+      return "left";
+    }
+    if (rawSide === "right" || rawSide === "r" || rawSide === "derecha") {
+      return "right";
+    }
+    return null;
+  }
+
+  function handleMessage(event) {
+    const side = normalizeSide(event.data);
+    if (!side) {
+      return;
+    }
+
+    state.inputBridge.lastSide = side;
+    state.inputBridge.lastEventAt = state.time;
+    handleAction(side);
+  }
+
+  function connect() {
+    if (!GAME_CONFIG.inputBridgeUrl) {
+      return;
+    }
+
+    socket = new WebSocket(GAME_CONFIG.inputBridgeUrl);
+    socket.addEventListener("open", () => {
+      reconnectDelay = 450;
+      setStatus(true);
+    });
+    socket.addEventListener("message", handleMessage);
+    socket.addEventListener("close", scheduleReconnect);
+    socket.addEventListener("error", () => {
+      socket?.close();
+    });
+  }
+
+  return { connect };
 }
 
 function createAudioManager() {
@@ -1914,6 +2012,7 @@ function frame(timestamp) {
 
 function init() {
   prepareShirtMask();
+  inputBridge.connect();
   syncHud();
   draw();
   rafId = window.requestAnimationFrame(frame);
@@ -1985,6 +2084,13 @@ window.render_game_to_text = () =>
     idleSeconds: GAME_CONFIG.idleSeconds,
     audioEnabled: GAME_CONFIG.audio.enabled,
     audioUnlocked: audio.unlocked,
+    inputBridge: {
+      url: GAME_CONFIG.inputBridgeUrl,
+      enabled: state.inputBridge.enabled,
+      connected: state.inputBridge.connected,
+      lastSide: state.inputBridge.lastSide,
+      reconnects: state.inputBridge.reconnects,
+    },
     screenTimer: Number(state.screenTimer.toFixed(2)),
     activeDirt: state.dirt.map((dirt) => ({
       kind: dirt.kind,

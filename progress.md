@@ -153,3 +153,12 @@ Update 2026-05-02 arcade audio:
 - Query rapida para pruebas/montaje: `?audio=0` desactiva todo el audio.
 - Assets libres/CC0 descargados de Kenney y OpenGameArt; fuentes documentadas en `assets/audio/README.md`.
 - Validacion realizada sin browser por pedido del usuario: `node --check game.js` y verificacion de formatos con `file`.
+
+Update 2026-05-02 Raspberry kiosk GPIO bridge:
+- Agregado `start.sh` para Raspberry OS: levanta `python3 -m http.server`, levanta `gpio_ws_bridge.py` y abre Chromium en kiosk/fullscreen.
+- `start.sh` pasa `?bridge=ws://127.0.0.1:8765` al juego y usa `--autoplay-policy=no-user-gesture-required` para que audio funcione con botones fisicos via WebSocket.
+- Pines configurables por variables: `GPIO_LEFT_PIN` default BCM17, `GPIO_RIGHT_PIN` default BCM27, `GPIO_DEBOUNCE`, `GPIO_PULL_UP`, `HTTP_PORT`, `GPIO_WS_PORT`, `CHROMIUM_BIN`.
+- Agregado `gpio_ws_bridge.py`: WebSocket stdlib sin dependencias de servidor; usa `gpiozero.Button` si esta disponible y envia JSON `{type, side, source, timestamp}`.
+- El juego ahora acepta `?bridge=...`, se conecta por WebSocket, reconecta si cae, normaliza `left/right/l/r/izquierda/derecha` y llama a la misma accion que teclado/click.
+- `render_game_to_text` expone estado del bridge (`enabled`, `connected`, `lastSide`, `reconnects`).
+- Validaciones sin browser: `node --check game.js`, `bash -n start.sh`, compilacion sintactica de `gpio_ws_bridge.py`, arranque/cierre breve del bridge y prueba local previa de entrega de evento por WebSocket.
