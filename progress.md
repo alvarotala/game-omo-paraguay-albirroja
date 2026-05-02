@@ -162,3 +162,8 @@ Update 2026-05-02 Raspberry kiosk GPIO bridge:
 - El juego ahora acepta `?bridge=...`, se conecta por WebSocket, reconecta si cae, normaliza `left/right/l/r/izquierda/derecha` y llama a la misma accion que teclado/click.
 - `render_game_to_text` expone estado del bridge (`enabled`, `connected`, `lastSide`, `reconnects`).
 - Validaciones sin browser: `node --check game.js`, `bash -n start.sh`, compilacion sintactica de `gpio_ws_bridge.py`, arranque/cierre breve del bridge y prueba local previa de entrega de evento por WebSocket.
+
+Update 2026-05-02 soap bottle animation restored:
+- Reagregada solo la animacion visual del jabon OMO al disparar: escala, lift, tilt lateral, glow y aro de energia.
+- No se reintrodujo la regla de input exclusivo; izquierda y derecha vuelven a funcionar normalmente aunque se presionen cerca en el tiempo.
+- Validacion: `node --check game.js`.

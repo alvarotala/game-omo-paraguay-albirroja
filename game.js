@@ -659,7 +659,7 @@ function shoot(side) {
   audio.play("spray", 0.64, randomBetween(0.92, 1.12));
   const spread = 62;
   state.activeSide = side;
-  state.activeSideTime = 0.18;
+  state.activeSideTime = 0.32;
 
   state.splashes.push({
     side,
@@ -1824,6 +1824,7 @@ function drawSoapControls() {
     -0.34,
     state.activeSide === "left",
     106,
+    "left",
   );
   drawSoapBottle(
     SPRAY_CONFIG.right.originX,
@@ -1831,22 +1832,41 @@ function drawSoapControls() {
     0.34,
     state.activeSide === "right",
     106,
+    "right",
   );
 }
 
-function drawSoapBottle(x, y, rotation, active, width = 96) {
+function drawSoapBottle(x, y, rotation, active, width = 96, side = "left") {
+  const activeProgress = active ? clamp(state.activeSideTime / 0.32, 0, 1) : 0;
+  const punch = Math.sin(activeProgress * Math.PI);
+  const snap = Math.sin(activeProgress * Math.PI * 2.2) * activeProgress;
+  const direction = side === "left" ? -1 : 1;
+  const tilt = rotation + direction * (0.18 * punch + 0.05 * snap);
+  const scale = 1 + punch * 0.18;
+  const lift = -18 * punch;
+
   ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(rotation);
+  ctx.translate(x + direction * 9 * punch, y + lift);
+  ctx.rotate(tilt);
+  ctx.scale(scale, scale);
 
   if (active) {
-    ctx.shadowColor = "rgba(139, 232, 255, 0.9)";
-    ctx.shadowBlur = 30;
+    ctx.save();
+    ctx.globalAlpha = 0.34 * punch;
+    ctx.strokeStyle = side === "left" ? SPRAY_CONFIG.left.color : SPRAY_CONFIG.right.color;
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.arc(0, -48, 64 + 28 * punch, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.shadowColor = side === "left" ? "rgba(88, 217, 255, 0.95)" : "rgba(112, 255, 193, 0.95)";
+    ctx.shadowBlur = 30 + 22 * punch;
   } else {
     ctx.shadowColor = "rgba(0, 0, 0, 0.34)";
     ctx.shadowBlur = 18;
   }
-  ctx.shadowOffsetY = 10;
+  ctx.shadowOffsetY = active ? 8 + 8 * punch : 10;
 
   if (images.omo.complete) {
     const height = width * (images.omo.naturalHeight / images.omo.naturalWidth);
@@ -1864,8 +1884,8 @@ function drawSoapBottle(x, y, rotation, active, width = 96) {
 function drawInstructionDiagram() {
   ctx.save();
   drawMiniShirt(CENTER_X, 510, 1.05);
-  drawSoapBottle(W * 0.18, 730, -0.24, true, 96);
-  drawSoapBottle(W * 0.82, 730, 0.24, true, 96);
+  drawSoapBottle(W * 0.18, 730, -0.24, true, 96, "left");
+  drawSoapBottle(W * 0.82, 730, 0.24, true, 96, "right");
 
   ctx.strokeStyle = SPRAY_CONFIG.left.color;
   ctx.lineWidth = 28;
