@@ -13,6 +13,23 @@ const GAME_CONFIG = {
   difficulty: 1,
   attractVideoSrc: "",
   inputBridgeUrl: "",
+  audio: {
+    enabled: true,
+    masterVolume: 0.68,
+    menuMusicVolume: 0.34,
+    gameMusicVolume: 0.46,
+    sfxVolume: 0.82,
+    menuMusic: "./assets/audio/music/menu.ogg",
+    gameMusic: "./assets/audio/music/game.ogg",
+    sfx: {
+      click: "./assets/audio/sfx/click.ogg",
+      start: "./assets/audio/sfx/start.ogg",
+      spray: "./assets/audio/sfx/spray.wav",
+      clean: "./assets/audio/sfx/clean.ogg",
+      dirtHit: "./assets/audio/sfx/dirt-hit.oga",
+      prize: "./assets/audio/sfx/prize.ogg",
+    },
+  },
   score: {
     cleanBeforeHit: 5,
     cleanAfterHit: 1,
@@ -106,6 +123,7 @@ const images = {
 };
 
 const attractVideo = createAttractVideo();
+const audio = createAudioManager();
 
 const shirtMask = {
   canvas: document.createElement("canvas"),
@@ -171,6 +189,11 @@ function applyRuntimeOverrides() {
   if (video) {
     GAME_CONFIG.attractVideoSrc = video;
   }
+
+  const audioOverride = params.get("audio");
+  if (audioOverride === "0" || audioOverride === "false") {
+    GAME_CONFIG.audio.enabled = false;
+  }
 }
 
 function createAttractVideo() {
@@ -192,6 +215,97 @@ function loadImage(src) {
   const image = new Image();
   image.src = src;
   return image;
+}
+
+function createAudioManager() {
+  const config = GAME_CONFIG.audio;
+  const loops = {
+    menu: createLoop(config.menuMusic),
+    game: createLoop(config.gameMusic),
+  };
+  const sfx = Object.fromEntries(
+    Object.entries(config.sfx).map(([name, src]) => [name, createSound(src)]),
+  );
+  let unlocked = false;
+  let currentLoop = null;
+
+  function createLoop(src) {
+    const sound = new Audio(src);
+    sound.loop = true;
+    sound.preload = "auto";
+    sound.volume = 0;
+    return sound;
+  }
+
+  function createSound(src) {
+    const sound = new Audio(src);
+    sound.preload = "auto";
+    return sound;
+  }
+
+  function targetForMode(mode) {
+    return mode === "playing" ? "game" : "menu";
+  }
+
+  function setLoopVolume(name) {
+    const loopVolume = name === "game" ? config.gameMusicVolume : config.menuMusicVolume;
+    loops[name].volume = clamp(config.masterVolume * loopVolume, 0, 1);
+  }
+
+  function updateForMode(mode) {
+    if (!config.enabled || !unlocked) {
+      return;
+    }
+
+    const target = targetForMode(mode);
+    if (currentLoop === target) {
+      setLoopVolume(target);
+      return;
+    }
+
+    for (const [name, loop] of Object.entries(loops)) {
+      if (name === target) {
+        setLoopVolume(name);
+        loop.play().catch(() => {});
+      } else {
+        loop.pause();
+        loop.currentTime = 0;
+      }
+    }
+    currentLoop = target;
+  }
+
+  function unlock(mode) {
+    if (!config.enabled || unlocked) {
+      return;
+    }
+
+    unlocked = true;
+    for (const sound of Object.values(sfx)) {
+      sound.load();
+    }
+    updateForMode(mode);
+  }
+
+  function play(name, volume = 1, rate = 1) {
+    if (!config.enabled || !unlocked || !sfx[name]) {
+      return;
+    }
+
+    const sound = sfx[name].cloneNode();
+    sound.volume = clamp(config.masterVolume * config.sfxVolume * volume, 0, 1);
+    sound.playbackRate = clamp(rate, 0.65, 1.55);
+    sound.play().catch(() => {});
+  }
+
+  return {
+    unlock,
+    updateForMode,
+    play,
+    get unlocked() {
+      return unlocked;
+    },
+  };
 }
 
 function clamp(value, min, max) {
@@ -390,10 +504,12 @@ function startGame() {
   state.idleTimer = 0;
   resetRun();
   state.flashMessage = "Evita que la suciedad toque la camiseta";
+  audio.play("start", 0.72, 1.05);
   syncHud();
 }
 
 function finishGame() {
+  audio.play(state.prizeLevel > 0 ? "prize" : "click", state.prizeLevel > 0 ? 0.86 : 0.48, 0.92);
   state.mode = "result";
   state.screenTimer = 0;
   state.result = "complete";
@@ -414,14 +530,17 @@ function handleAction(side) {
     return;
   }
 
+  audio.unlock(state.mode);
   state.idleTimer = 0;
 
   if (state.mode === "attract") {
+    audio.play("click", 0.62);
     showStartScreen();
     return;
   }
 
   if (state.mode === "start") {
+    audio.play("click", 0.62);
     showInstructions();
     return;
   }
@@ -439,6 +558,7 @@ function handleAction(side) {
 
 function shoot(side) {
   const config = SPRAY_CONFIG[side];
+  audio.play("spray", 0.64, randomBetween(0.92, 1.12));
   const spread = 62;
   state.activeSide = side;
   state.activeSideTime = 0.18;
@@ -817,6 +937,7 @@ function updateFeedback(dt) {
 }
 
 function triggerShirtImpact(dirt, hit) {
+  audio.play("dirtHit", 0.9, randomBetween(0.86, 1.08));
   state.impactBurst = 0.55;
   state.screenShake = Math.max(state.screenShake, 0.46);
 
@@ -919,6 +1040,7 @@ function isDirtInShirtDefenseZone(dirt, side) {
 }
 
 function cleanDirt(dirt) {
+  audio.play("clean", 0.78, randomBetween(0.96, 1.18));
   dirt.cleaned = true;
   const points = dirt.hitShirt ? GAME_CONFIG.score.cleanAfterHit : dirt.score;
   addScore(points, dirt.x, dirt.y, dirt.hitShirt ? "LIMPIEZA" : `+${points}%`, "#84ffb3");
@@ -959,6 +1081,7 @@ function addScore(delta, x, y, label, color) {
   });
 
   if (state.prizeLevel > previousLevel) {
+    audio.play("prize", 0.82, 1 + state.prizeLevel * 0.04);
     const prize = PRIZE_LEVELS[state.prizeLevel - 1];
     state.flashMessage = `${prize.label} desbloqueado`;
     state.feedback.push({
@@ -1015,6 +1138,7 @@ function getDirtShirtHit(dirt) {
 
 function syncHud() {
   canvas.style.cursor = state.mode === "playing" ? "crosshair" : "pointer";
+  audio.updateForMode(state.mode);
 }
 
 function draw() {
@@ -1796,6 +1920,7 @@ function init() {
 }
 
 canvas.addEventListener("pointerdown", (event) => {
+  audio.unlock(state.mode);
   if (state.mode === "result") {
     return;
   }
@@ -1806,6 +1931,7 @@ canvas.addEventListener("pointerdown", (event) => {
 });
 
 window.addEventListener("keydown", (event) => {
+  audio.unlock(state.mode);
   if (state.mode === "result") {
     return;
   }
@@ -1825,11 +1951,19 @@ window.addEventListener("keydown", (event) => {
 });
 
 window.setGameConfig = (updates = {}) => {
-  const { score, ...rest } = updates;
+  const { score, audio: audioUpdates, ...rest } = updates;
   Object.assign(GAME_CONFIG, rest);
   if (typeof score === "object") {
     Object.assign(GAME_CONFIG.score, score);
   }
+  if (typeof audioUpdates === "object") {
+    const { sfx, ...audioRest } = audioUpdates;
+    Object.assign(GAME_CONFIG.audio, audioRest);
+    if (typeof sfx === "object") {
+      Object.assign(GAME_CONFIG.audio.sfx, sfx);
+    }
+  }
+  syncHud();
   if (state.mode === "playing") {
     state.timeLeft = Math.max(0, GAME_CONFIG.roundSeconds - state.roundElapsed);
   }
@@ -1849,6 +1983,8 @@ window.render_game_to_text = () =>
     roundSeconds: GAME_CONFIG.roundSeconds,
     difficulty: GAME_CONFIG.difficulty,
     idleSeconds: GAME_CONFIG.idleSeconds,
+    audioEnabled: GAME_CONFIG.audio.enabled,
+    audioUnlocked: audio.unlocked,
     screenTimer: Number(state.screenTimer.toFixed(2)),
     activeDirt: state.dirt.map((dirt) => ({
       kind: dirt.kind,

@@ -144,3 +144,12 @@ Update 2026-05-01 arcade impacts:
 - Validaciones:
   - `node --check game.js`
   - `output/omo-arcade-impacts`: capturas con impactos multiples visibles y sin errores.
+
+Update 2026-05-02 arcade audio:
+- Agregada capa de audio configurable en `GAME_CONFIG.audio` con volumen master, volumen de musica de menu/gameplay y volumen de SFX.
+- La musica se desbloquea con el primer input del usuario por restricciones de autoplay de Chromium.
+- Menus/resultado usan `assets/audio/music/menu.ogg`; gameplay usa `assets/audio/music/game.ogg`.
+- Eventos con SFX: click de boton, inicio de partida, disparo de jabon/rayo, limpieza, impacto de suciedad y desbloqueo de premio.
+- Query rapida para pruebas/montaje: `?audio=0` desactiva todo el audio.
+- Assets libres/CC0 descargados de Kenney y OpenGameArt; fuentes documentadas en `assets/audio/README.md`.
+- Validacion realizada sin browser por pedido del usuario: `node --check game.js` y verificacion de formatos con `file`.
