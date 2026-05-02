@@ -259,3 +259,5 @@ Tambien revisar que no se haya abierto con `?audio=0`.
 - El juego esta pensado para portrait 9:16. En una TV 4K horizontal conviene configurar la salida/rotacion o montar el display en vertical segun el totem.
 - Los premios reales pueden editarse en `PRIZE_LEVELS` dentro de `game.js`.
 - Los tiempos y dificultad deben ajustarse despues de pruebas reales con publico.
+
+
