@@ -103,7 +103,7 @@ En `game.js`, `GAME_CONFIG` concentra los valores principales:
 ```js
 roundSeconds: 35,
 idleSeconds: 18,
-instructionsSeconds: 3.2,
+instructionsSeconds: 10,
 resultSeconds: 8,
 difficulty: 1,
 attractVideoSrc: "",

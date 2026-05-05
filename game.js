@@ -8,10 +8,10 @@ const CENTER_X = W / 2;
 const GAME_CONFIG = {
   roundSeconds: 35,
   idleSeconds: 18,
-  instructionsSeconds: 3.2,
+  instructionsSeconds: 10,
   resultSeconds: 8,
   difficulty: 1,
-  attractVideoSrc: "",
+  attractVideoSrc: "video.mp4",
   inputBridgeUrl: "",
   audio: {
     enabled: true,
@@ -120,6 +120,7 @@ const images = {
   background: loadImage("./assets/fondo.png"),
   shirt: loadImage("./assets/remera.png"),
   omo: loadImage("./assets/omo.png"),
+  logoOmo: loadImage("./assets/logo-omo.png"),
 };
 
 const attractVideo = createAttractVideo();
@@ -165,6 +166,7 @@ const state = {
   finalScore: 0,
   finalPrizeLevel: 0,
   finalPrizeLabel: "Sin premio",
+  videoAudioUnlocked: false,
   inputBridge: {
     enabled: Boolean(GAME_CONFIG.inputBridgeUrl),
     connected: false,
@@ -216,12 +218,31 @@ function createAttractVideo() {
 
   const video = document.createElement("video");
   video.src = GAME_CONFIG.attractVideoSrc;
-  video.muted = true;
+  video.muted = false;
+  video.volume = 1;
   video.loop = true;
   video.playsInline = true;
   video.preload = "auto";
-  video.play().catch(() => {});
+  playAttractVideo(video, true);
   return video;
+}
+
+function playAttractVideo(video, preferSound = false) {
+  if (!video) {
+    return;
+  }
+
+  video.muted = !preferSound;
+  video.volume = 1;
+  const playPromise = video.play();
+  if (!playPromise) {
+    return;
+  }
+
+  playPromise.catch(() => {
+    video.muted = true;
+    video.play().catch(() => {});
+  });
 }
 
 function loadImage(src) {
@@ -342,6 +363,9 @@ function createAudioManager() {
   }
 
   function targetForMode(mode) {
+    if (mode === "attract" && attractVideo) {
+      return null;
+    }
     return mode === "playing" ? "game" : "menu";
   }
 
@@ -356,6 +380,15 @@ function createAudioManager() {
     }
 
     const target = targetForMode(mode);
+    if (!target) {
+      for (const loop of Object.values(loops)) {
+        loop.pause();
+        loop.currentTime = 0;
+      }
+      currentLoop = null;
+      return;
+    }
+
     if (currentLoop === target) {
       setLoopVolume(target);
       return;
@@ -570,7 +603,7 @@ function showAttractScreen() {
   state.flashMessage = "PROTEGE TU CAMISETA";
   resetSceneObjects();
   if (attractVideo) {
-    attractVideo.play().catch(() => {});
+    playAttractVideo(attractVideo, state.videoAudioUnlocked);
   }
   syncHud();
 }
@@ -1338,16 +1371,6 @@ function drawAttractScreen() {
     drawAttractProductScene();
   }
 
-  ctx.save();
-  const fade = 0.68 + Math.sin(state.time * 3.2) * 0.18;
-  ctx.textAlign = "center";
-  ctx.fillStyle = "rgba(255,255,255,0.92)";
-  ctx.font = "700 28px Trebuchet MS";
-  ctx.fillText("PRESIONA UN BOTON", CENTER_X, H - 178);
-  ctx.globalAlpha = fade;
-  drawStartPill(CENTER_X - 145, H - 132, "←", SPRAY_CONFIG.left.color);
-  drawStartPill(CENTER_X + 145, H - 132, "→", SPRAY_CONFIG.right.color);
-  ctx.restore();
 }
 
 function drawCoverVideo(video) {
@@ -1412,21 +1435,65 @@ function drawStartScreen() {
 
   ctx.save();
   ctx.textAlign = "center";
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "700 62px Trebuchet MS";
-  wrapTextCentered("PROTEGE TU CAMISETA", CENTER_X, 185, 610, 68);
+  drawStartLogo(CENTER_X, 190, 195);
 
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
-  ctx.font = "600 29px Trebuchet MS";
-  wrapTextCentered("Defende la camiseta de Paraguay de tierra, pasto y manchas.", CENTER_X, 350, 580, 38);
+  ctx.fillStyle = "rgba(255,255,255,0.94)";
+  ctx.font = "700 34px Trebuchet MS";
+  ctx.fillText("Mantené a la albirroja", CENTER_X, 350);
+  ctx.fillText("impecable con OMO Ultra", CENTER_X, 392);
+  ctx.fillText("Power y ganá!", CENTER_X, 434);
 
-  drawMiniShirt(CENTER_X, 670, 1.5);
+  drawStartProduct(CENTER_X, 704, 230);
 
   ctx.fillStyle = "rgba(255,255,255,0.84)";
   ctx.font = "700 27px Trebuchet MS";
   ctx.fillText("Presiona izquierda o derecha para jugar", CENTER_X, 1016);
   drawStartPill(CENTER_X - 150, 1088, "←", SPRAY_CONFIG.left.color);
   drawStartPill(CENTER_X + 150, 1088, "→", SPRAY_CONFIG.right.color);
+  ctx.restore();
+}
+
+
+function drawStartLogo(x, y, width) {
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.28)";
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 12;
+
+  if (images.logoOmo.complete && images.logoOmo.naturalWidth) {
+    const height = width * (images.logoOmo.naturalHeight / images.logoOmo.naturalWidth);
+    ctx.drawImage(images.logoOmo, x - width / 2, y - height / 2, width, height);
+  } else {
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 62px Trebuchet MS";
+    ctx.textAlign = "center";
+    ctx.fillText("OMO", x, y + 20);
+  }
+
+  ctx.restore();
+}
+
+function drawStartProduct(x, y, width) {
+  ctx.save();
+  ctx.translate(x, y);
+  const floatY = Math.sin(state.time * 1.65) * 8;
+  const scale = 1 + Math.sin(state.time * 1.2) * 0.012;
+  ctx.translate(0, floatY);
+  ctx.scale(scale, scale);
+  ctx.shadowColor = "rgba(0,0,0,0.38)";
+  ctx.shadowBlur = 36;
+  ctx.shadowOffsetY = 22;
+
+  if (images.omo.complete && images.omo.naturalWidth) {
+    const height = width * (images.omo.naturalHeight / images.omo.naturalWidth);
+    ctx.drawImage(images.omo, -width / 2, -height / 2, width, height);
+  } else {
+    ctx.fillStyle = "#e91f2f";
+    ctx.beginPath();
+    ctx.roundRect(-width / 2, -width * 0.85, width, width * 1.7, 22);
+    ctx.fill();
+  }
+
   ctx.restore();
 }
 
@@ -2039,6 +2106,7 @@ function init() {
 }
 
 canvas.addEventListener("pointerdown", (event) => {
+  state.videoAudioUnlocked = true;
   audio.unlock(state.mode);
   if (state.mode === "result") {
     return;
@@ -2050,6 +2118,7 @@ canvas.addEventListener("pointerdown", (event) => {
 });
 
 window.addEventListener("keydown", (event) => {
+  state.videoAudioUnlocked = true;
   audio.unlock(state.mode);
   if (state.mode === "result") {
     return;
@@ -2104,6 +2173,7 @@ window.render_game_to_text = () =>
     idleSeconds: GAME_CONFIG.idleSeconds,
     audioEnabled: GAME_CONFIG.audio.enabled,
     audioUnlocked: audio.unlocked,
+    videoAudioUnlocked: state.videoAudioUnlocked,
     inputBridge: {
       url: GAME_CONFIG.inputBridgeUrl,
       enabled: state.inputBridge.enabled,

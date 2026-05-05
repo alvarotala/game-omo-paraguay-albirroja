@@ -167,3 +167,21 @@ Update 2026-05-02 soap bottle animation restored:
 - Reagregada solo la animacion visual del jabon OMO al disparar: escala, lift, tilt lateral, glow y aro de energia.
 - No se reintrodujo la regla de input exclusivo; izquierda y derecha vuelven a funcionar normalmente aunque se presionen cerca en el tiempo.
 - Validacion: `node --check game.js`.
+
+Update 2026-05-05 attract video cleanup:
+- En modo video/protector ya no se dibuja el texto `PRESIONA UN BOTON` ni las flechas sobre el video.
+- El video de attract ahora queda `muted = false` y volumen 1 para reproducir su audio.
+- La musica del juego/menu se pausa mientras esta activo el video para no mezclarse con el audio propio del video.
+- Validacion: `node --check game.js`.
+
+Update 2026-05-05 attract video autoplay fallback:
+- El video de attract intenta iniciar con sonido, pero si Chromium bloquea autoplay con audio hace fallback automatico a muted autoplay para que no quede pausado en el primer frame.
+- Despues de una interaccion real de pointer/teclado, `videoAudioUnlocked` permite reintentar el video con audio al volver al attract.
+- Se mantiene el modo attract sin texto ni flechas sobre el video, y la musica del juego se pausa durante attract con video.
+- Validacion: `node --check game.js`.
+
+Update 2026-05-05 start screen branding:
+- Pantalla de inicio actualizada para usar `assets/logo-omo.png` en lugar del titulo textual `PROTEGE TU CAMISETA`.
+- Copy de inicio cambiado a tres lineas: `Mantené a la albirroja`, `impecable con OMO Ultra`, `Power y ganá!`.
+- La imagen central de inicio ahora usa `assets/omo.png` en vez de la camiseta.
+- Validacion: `node --check game.js`.
