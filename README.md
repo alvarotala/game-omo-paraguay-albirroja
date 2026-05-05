@@ -13,6 +13,7 @@ El jugador protege una camiseta de Paraguay de suciedad, pasto, barro y manchas 
 - `assets/audio/README.md`: fuentes/licencias de audio.
 - `gpio_ws_bridge.py`: bridge local GPIO -> WebSocket.
 - `start.sh`: script de arranque para Raspberry OS.
+- `kiosk_http_server.py`: servidor HTTP local para kiosk, con soporte Range para video y logs menos ruidosos.
 - `progress.md`: historial tecnico de cambios.
 
 ## Requisitos en Raspberry OS
@@ -39,7 +40,7 @@ Desde la carpeta del proyecto:
 
 Esto hace tres cosas:
 
-1. Levanta el server web local en `http://127.0.0.1:8000/`.
+1. Levanta el server web local en `http://127.0.0.1:8000/` usando `kiosk_http_server.py`, con soporte para video MP4 y requests parciales.
 2. Levanta el bridge WebSocket en `ws://127.0.0.1:8765`.
 3. Abre Chromium en kiosk/fullscreen apuntando al juego con el bridge conectado.
 
@@ -88,6 +89,8 @@ GPIO_DEBOUNCE=0.16          # Antirrebote en segundos
 GPIO_PULL_UP=0              # 0 pull-down, 1 pull-up
 GPIO_STDIN_SIM=0            # 1 habilita simulacion por teclado en consola del bridge
 CHROMIUM_BIN=chromium       # Override manual del binario de Chromium
+CHROMIUM_USER_DATA_DIR=/tmp/omo-chromium-profile  # Perfil limpio para kiosk
+CHROMIUM_EXTRA_FLAGS=""      # Flags extra para pruebas
 ```
 
 Ejemplo:

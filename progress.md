@@ -205,3 +205,9 @@ Update 2026-05-05 final screens redesign:
 - Si pierde, muestra reloj rojo pulsante y texto `TE QUEDASTE SIN TIEMPO`.
 - Se mantiene contador de retorno al inicio.
 - Validacion: `node --check game.js`.
+
+Update 2026-05-05 Raspberry runtime hardening:
+- Reemplazado `python3 -m http.server` por `kiosk_http_server.py`, un server local con soporte Range para MP4, favicon 204 y supresion de BrokenPipe/ConnectionReset cuando Chromium corta requests de video.
+- `start.sh` ahora prefiere `chromium` sobre `chromium-browser`, usa perfil limpio `CHROMIUM_USER_DATA_DIR=/tmp/omo-chromium-profile` y agrega flags para reducir ruido de background networking, sync, component update y crashpad.
+- Se agrego `CHROMIUM_EXTRA_FLAGS` para poder probar flags adicionales sin editar el script.
+- Validaciones: `bash -n start.sh` y compilacion sintactica de `kiosk_http_server.py`.

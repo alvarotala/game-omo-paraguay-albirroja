@@ -13,12 +13,13 @@ GPIO_DEBOUNCE="${GPIO_DEBOUNCE:-0.16}"
 GPIO_PULL_UP="${GPIO_PULL_UP:-0}"
 GPIO_STDIN_SIM="${GPIO_STDIN_SIM:-0}"
 CHROMIUM_BIN="${CHROMIUM_BIN:-}"
+CHROMIUM_USER_DATA_DIR="${CHROMIUM_USER_DATA_DIR:-/tmp/omo-chromium-profile}"
 
 if [[ -z "$CHROMIUM_BIN" ]]; then
-  if command -v chromium-browser >/dev/null 2>&1; then
-    CHROMIUM_BIN="chromium-browser"
-  elif command -v chromium >/dev/null 2>&1; then
+  if command -v chromium >/dev/null 2>&1; then
     CHROMIUM_BIN="chromium"
+  elif command -v chromium-browser >/dev/null 2>&1; then
+    CHROMIUM_BIN="chromium-browser"
   else
     echo "No encuentro chromium-browser ni chromium en PATH" >&2
     exit 1
@@ -36,8 +37,10 @@ export GPIO_WS_HOST GPIO_WS_PORT GPIO_LEFT_PIN GPIO_RIGHT_PIN GPIO_DEBOUNCE GPIO
 python3 gpio_ws_bridge.py &
 GPIO_PID="$!"
 
-python3 -m http.server "$HTTP_PORT" --bind 127.0.0.1 &
+python3 kiosk_http_server.py "$HTTP_PORT" --bind 127.0.0.1 --directory "$ROOT_DIR" &
 HTTP_PID="$!"
+
+mkdir -p "$CHROMIUM_USER_DATA_DIR"
 
 sleep 1
 
@@ -47,4 +50,21 @@ echo "GPIO bridge: ws://127.0.0.1:${GPIO_WS_PORT}"
 echo "GPIO pins BCM: left=${GPIO_LEFT_PIN}, right=${GPIO_RIGHT_PIN}, HIGH press, debounce=${GPIO_DEBOUNCE}s"
 echo "Opening Chromium kiosk: $GAME_URL"
 
-"$CHROMIUM_BIN"   --kiosk   --start-fullscreen   --noerrdialogs   --disable-infobars   --disable-session-crashed-bubble   --autoplay-policy=no-user-gesture-required   --check-for-update-interval=31536000   "$GAME_URL"
+"$CHROMIUM_BIN" \
+  --kiosk \
+  --start-fullscreen \
+  --noerrdialogs \
+  --disable-infobars \
+  --disable-session-crashed-bubble \
+  --disable-background-networking \
+  --disable-sync \
+  --disable-component-update \
+  --disable-domain-reliability \
+  --disable-crash-reporter \
+  --disable-crashpad \
+  --metrics-recording-only \
+  --user-data-dir="$CHROMIUM_USER_DATA_DIR" \
+  --autoplay-policy=no-user-gesture-required \
+  --check-for-update-interval=31536000 \
+  ${CHROMIUM_EXTRA_FLAGS:-} \
+  "$GAME_URL"
