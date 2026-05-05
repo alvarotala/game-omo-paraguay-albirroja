@@ -2,7 +2,7 @@
 
 Juego web portrait para activacion de marca OMO Ultrapower Paraguay. La experiencia corre en una TV 4K con Raspberry Pi 5 y Chromium en modo kiosk/fullscreen.
 
-El jugador protege una camiseta de Paraguay de suciedad, pasto, barro y manchas usando dos botones fisicos tipo arcade: izquierda y derecha. Cada boton dispara jabon/rayos desde su lado. Limpiar suma porcentaje; si la suciedad toca la camiseta, resta. El resultado final va de 0% a 100% y desbloquea premios por niveles de 25%, 50%, 75% y 100%.
+El jugador protege una camiseta de Paraguay de suciedad, pasto, barro y manchas usando dos botones fisicos tipo arcade: izquierda y derecha. Cada boton dispara jabon/rayos desde su lado. Limpiar suma porcentaje; si la suciedad toca la camiseta, resta. El resultado final va de 0% a 100%; con 75% o mas gana premio, por debajo de 75% queda sin premio.
 
 ## Estructura
 
@@ -257,7 +257,7 @@ Tambien revisar que no se haya abierto con `?audio=0`.
 
 - Para salir del kiosk en Raspberry, usar `Alt+F4` o cambiar de terminal/sesion segun configuracion del sistema.
 - El juego esta pensado para portrait 9:16. En una TV 4K horizontal conviene configurar la salida/rotacion o montar el display en vertical segun el totem.
-- Los premios reales pueden editarse en `PRIZE_LEVELS` dentro de `game.js`.
+- El umbral de premio puede editarse en `PRIZE_THRESHOLD` dentro de `game.js`.
 - Los tiempos y dificultad deben ajustarse despues de pruebas reales con publico.
 
 

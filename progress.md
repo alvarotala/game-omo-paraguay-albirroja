@@ -185,3 +185,23 @@ Update 2026-05-05 start screen branding:
 - Copy de inicio cambiado a tres lineas: `Mantené a la albirroja`, `impecable con OMO Ultra`, `Power y ganá!`.
 - La imagen central de inicio ahora usa `assets/omo.png` en vez de la camiseta.
 - Validacion: `node --check game.js`.
+
+Update 2026-05-05 single prize threshold:
+- Eliminados los 4 niveles de premio del juego y del HUD principal.
+- Nueva regla: el jugador gana premio solo si termina con 75% o mas; por debajo de 75% queda sin premio.
+- Donde estaba el marcador de Nivel 3/75% ahora se muestra un unico marcador `Premio` en la barra de puntaje.
+- Pantalla final cambiada a `GANASTE PREMIO` / `SIN PREMIO ESTA VEZ`, con barra de objetivo 75%.
+- README actualizado para documentar `PRIZE_THRESHOLD`.
+
+Update 2026-05-05 gameplay HUD score/time redesign:
+- HUD superior simplificado: se quitaron los labels separados `PUNTAJE` y `TIEMPO`.
+- Arriba queda solo la barra de puntaje con texto `Puntos X`.
+- El tiempo se movio al centro inferior, entre los dos envases OMO, como dial circular con borde decreciente y texto interno `TIEMPO` + segundos restantes.
+- Validacion: `node --check game.js`.
+
+Update 2026-05-05 final screens redesign:
+- Pantalla final ya no usa overlay/card sobre el gameplay; ahora es una pantalla completa con fondo de marca y logo OMO arriba.
+- Si gana, muestra camiseta limpia centrada con glow y burbujas, texto `GANASTE` y `SOLICITA TU PREMIO`.
+- Si pierde, muestra reloj rojo pulsante y texto `TE QUEDASTE SIN TIEMPO`.
+- Se mantiene contador de retorno al inicio.
+- Validacion: `node --check game.js`.

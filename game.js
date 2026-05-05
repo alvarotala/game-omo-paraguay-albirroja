@@ -43,12 +43,9 @@ window.OMO_GAME_CONFIG = GAME_CONFIG;
 
 const SHIRT_AREA = { x: CENTER_X, y: H * 0.52, w: 455, h: 530 };
 
-const PRIZE_LEVELS = [
-  { threshold: 25, label: "Nivel 1", prize: "Premio Nivel 1", color: "#70d7ff" },
-  { threshold: 50, label: "Nivel 2", prize: "Premio Nivel 2", color: "#8dffca" },
-  { threshold: 75, label: "Nivel 3", prize: "Premio Nivel 3", color: "#ffe16f" },
-  { threshold: 100, label: "Nivel 4", prize: "Premio Final", color: "#ff5a66" },
-];
+const PRIZE_THRESHOLD = 75;
+const PRIZE_LABEL = "Premio";
+const PRIZE_COLOR = "#ffe16f";
 
 const DIRT_TYPES = [
   {
@@ -448,17 +445,11 @@ function randomBetween(min, max) {
 }
 
 function getPrizeLevel(score) {
-  return PRIZE_LEVELS.reduce(
-    (level, prize, index) => (score >= prize.threshold ? index + 1 : level),
-    0,
-  );
+  return score >= PRIZE_THRESHOLD ? 1 : 0;
 }
 
 function getPrizeLabel(level) {
-  if (level <= 0) {
-    return "Sin premio";
-  }
-  return PRIZE_LEVELS[level - 1].prize;
+  return level > 0 ? PRIZE_LABEL : "Sin premio";
 }
 
 function getSprayPoint(config, t, lane = 0) {
@@ -640,7 +631,8 @@ function startGame() {
 }
 
 function finishGame() {
-  audio.play(state.prizeLevel > 0 ? "prize" : "click", state.prizeLevel > 0 ? 0.86 : 0.48, 0.92);
+  const wonPrize = state.score >= PRIZE_THRESHOLD;
+  audio.play(wonPrize ? "prize" : "click", wonPrize ? 0.86 : 0.48, 0.92);
   state.mode = "result";
   state.screenTimer = 0;
   state.result = "complete";
@@ -1213,16 +1205,15 @@ function addScore(delta, x, y, label, color) {
 
   if (state.prizeLevel > previousLevel) {
     audio.play("prize", 0.82, 1 + state.prizeLevel * 0.04);
-    const prize = PRIZE_LEVELS[state.prizeLevel - 1];
-    state.flashMessage = `${prize.label} desbloqueado`;
+    state.flashMessage = `${PRIZE_LABEL} desbloqueado`;
     state.feedback.push({
-      text: prize.prize.toUpperCase(),
+      text: PRIZE_LABEL.toUpperCase(),
       x: CENTER_X,
       y: H * 0.26,
       vy: -18,
       age: 0,
       maxAge: 1.25,
-      color: prize.color,
+      color: PRIZE_COLOR,
     });
   } else if (state.prizeLevel < previousLevel) {
     state.flashMessage = "Recupera el premio con mas limpieza";
@@ -1236,12 +1227,10 @@ function updatePrizeLevel() {
 function updateMessage() {
   if (state.timeLeft <= 5) {
     state.flashMessage = "Ultimos segundos";
-  } else if (state.score >= 100) {
-    state.flashMessage = "Premio final asegurado";
   } else if (state.prizeLevel > 0) {
-    state.flashMessage = `${getPrizeLabel(state.prizeLevel)} activo`;
+    state.flashMessage = "Premio asegurado";
   } else {
-    state.flashMessage = "Limpia para llegar al primer premio";
+    state.flashMessage = "Limpia para llegar al premio";
   }
 }
 
@@ -1503,9 +1492,11 @@ function drawInstructionsScreen() {
 
   ctx.save();
   ctx.textAlign = "center";
+  drawHudLogo(CENTER_X, 76, 112);
+
   ctx.fillStyle = "#ffffff";
   ctx.font = "700 50px Trebuchet MS";
-  ctx.fillText("COMO JUGAR", CENTER_X, 174);
+  ctx.fillText("COMO JUGAR", CENTER_X, 218);
 
   drawInstructionDiagram();
 
@@ -1522,62 +1513,190 @@ function drawInstructionsScreen() {
 }
 
 function drawResultScreen() {
-  drawBackground();
-  drawStageGlow();
-  drawShirt();
-  drawStains();
-  drawDirt();
-  drawBubbles();
-  drawScreenShade(0.62);
+  const hasPrize = state.finalScore >= PRIZE_THRESHOLD;
 
-  const level = state.finalPrizeLevel;
-  const hasPrize = level > 0;
-  const title = hasPrize ? `PREMIO NIVEL ${level}` : "SIN PREMIO ESTA VEZ";
-  const accent = hasPrize ? PRIZE_LEVELS[level - 1].color : "#ffb486";
+  drawBackground();
+  drawScreenShade(0.34);
+  drawFabricMotion();
+  drawHudLogo(CENTER_X, 76, 112);
 
   ctx.save();
-  const cardX = 60;
-  const cardY = 242;
-  const cardW = W - 120;
-  const cardH = 590;
+  ctx.textAlign = "center";
 
-  ctx.fillStyle = "rgba(4, 18, 43, 0.82)";
-  ctx.strokeStyle = "rgba(255,255,255,0.24)";
-  ctx.lineWidth = 2;
+  if (hasPrize) {
+    drawCleanWinScene();
+  } else {
+    drawTimeLossScene();
+  }
+
+  const remaining = Math.max(1, Math.ceil(GAME_CONFIG.resultSeconds - state.screenTimer));
+  ctx.fillStyle = "rgba(255,255,255,0.68)";
+  ctx.font = "600 24px Trebuchet MS";
+  ctx.fillText("Volviendo al inicio en " + remaining, CENTER_X, 1156);
+  ctx.restore();
+}
+
+function drawCleanWinScene() {
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  const glow = ctx.createRadialGradient(CENTER_X, 550, 60, CENTER_X, 590, 360);
+  glow.addColorStop(0, "rgba(255,255,255,0.42)");
+  glow.addColorStop(0.46, "rgba(112,255,193,0.18)");
+  glow.addColorStop(1, "rgba(88,217,255,0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 180, W, 760);
+  ctx.restore();
+
+  drawCleanRays(CENTER_X, 620);
+  drawResultBubbles(CENTER_X, 610, 250);
+  drawMiniShirt(CENTER_X, 620, 1.95);
+  drawCleanSparkles(CENTER_X, 620);
+  drawResultBubbles(CENTER_X, 640, 330, 0.55);
+
+  ctx.save();
+  ctx.shadowColor = "rgba(112,255,193,0.72)";
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "700 78px Trebuchet MS";
+  ctx.fillText("GANASTE", CENTER_X, 948);
+
+  ctx.font = "700 38px Trebuchet MS";
+  ctx.fillText("SOLICITA TU PREMIO", CENTER_X, 1008);
+  ctx.restore();
+}
+
+function drawTimeLossScene() {
+  drawRedClock(CENTER_X, 534, 130);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "700 56px Trebuchet MS";
+  wrapTextCentered("TE QUEDASTE SIN TIEMPO", CENTER_X, 790, 600, 62);
+}
+
+function drawCleanRays(cx, cy) {
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+
+  for (let index = 0; index < 18; index += 1) {
+    const angle = (index / 18) * Math.PI * 2 + state.time * 0.55;
+    const inner = 112 + Math.sin(state.time * 2 + index) * 8;
+    const outer = 295 + Math.sin(state.time * 2.4 + index * 0.7) * 28;
+    const alpha = 0.16 + (index % 3) * 0.035;
+
+    const gradient = ctx.createLinearGradient(
+      cx + Math.cos(angle) * inner,
+      cy + Math.sin(angle) * inner,
+      cx + Math.cos(angle) * outer,
+      cy + Math.sin(angle) * outer,
+    );
+    gradient.addColorStop(0, "rgba(255,255,255," + alpha + ")");
+    gradient.addColorStop(0.55, "rgba(112,255,193," + alpha * 0.7 + ")");
+    gradient.addColorStop(1, "rgba(88,217,255,0)");
+
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = 8 + (index % 4) * 3;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
+    ctx.lineTo(cx + Math.cos(angle) * outer, cy + Math.sin(angle) * outer);
+    ctx.stroke();
+  }
+
+  for (let ring = 0; ring < 3; ring += 1) {
+    const progress = (state.time * 0.7 + ring / 3) % 1;
+    ctx.strokeStyle = "rgba(255,255,255," + (0.24 * (1 - progress)) + ")";
+    ctx.lineWidth = 8 * (1 - progress) + 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 120 + progress * 210, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawCleanSparkles(cx, cy) {
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+
+  for (let index = 0; index < 28; index += 1) {
+    const angle = index * 2.399 + state.time * 0.9;
+    const distance = 115 + ((index * 43) % 180);
+    const x = cx + Math.cos(angle) * distance;
+    const y = cy + Math.sin(angle * 0.92) * distance * 0.78;
+    const size = 5 + (index % 4) * 2 + Math.sin(state.time * 5 + index) * 2;
+    const alpha = 0.35 + (index % 5) * 0.08;
+
+    ctx.strokeStyle = "rgba(255,255,255," + alpha + ")";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - size, y);
+    ctx.lineTo(x + size, y);
+    ctx.moveTo(x, y - size);
+    ctx.lineTo(x, y + size);
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(112,255,193," + alpha * 0.42 + ")";
+    ctx.beginPath();
+    ctx.arc(x, y, size * 0.62, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawResultBubbles(cx, cy, radius, alphaScale = 1) {
+  ctx.save();
+  for (let index = 0; index < 42; index += 1) {
+    const angle = index * 1.72 + state.time * 0.58;
+    const ring = radius * (0.32 + ((index * 37) % 100) / 120);
+    const x = cx + Math.cos(angle) * ring + Math.sin(state.time * 1.8 + index) * 9;
+    const y = cy + Math.sin(angle * 0.82) * ring * 0.72 - ((state.time * 34 + index * 19) % 54);
+    const bubbleRadius = 7 + (index % 5) * 3;
+    const alpha = (0.18 + (index % 4) * 0.06) * alphaScale;
+
+    ctx.strokeStyle = "rgba(255,255,255," + alpha + ")";
+    ctx.fillStyle = "rgba(255,255,255," + alpha * 0.18 + ")";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, bubbleRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawRedClock(x, y, radius) {
+  const pulse = 1 + Math.sin(state.time * 5.2) * 0.035;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(pulse, pulse);
+  ctx.shadowColor = "rgba(255,45,66,0.62)";
+  ctx.shadowBlur = 34;
+
+  ctx.fillStyle = "rgba(90, 5, 18, 0.76)";
+  ctx.strokeStyle = "#ff4157";
+  ctx.lineWidth = 12;
   ctx.beginPath();
-  ctx.roundRect(cardX, cardY, cardW, cardH, 34);
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = accent;
+  ctx.strokeStyle = "rgba(255,255,255,0.92)";
+  ctx.lineWidth = 10;
+  ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.roundRect(cardX + 34, cardY + 34, 122, 10, 999);
+  ctx.moveTo(0, 0);
+  ctx.lineTo(0, -radius * 0.55);
+  ctx.moveTo(0, 0);
+  ctx.lineTo(radius * 0.46, radius * 0.22);
+  ctx.stroke();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(0, 0, 12, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.textAlign = "center";
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "700 52px Trebuchet MS";
-  wrapTextCentered(title, CENTER_X, cardY + 112, cardW - 70, 58);
-
-  ctx.font = "700 98px Trebuchet MS";
-  ctx.fillText(`${state.finalScore}%`, CENTER_X, cardY + 282);
-
-  ctx.fillStyle = "rgba(255,255,255,0.88)";
-  ctx.font = "600 30px Trebuchet MS";
-  wrapTextCentered(
-    hasPrize ? state.finalPrizeLabel : "Necesita 25% para desbloquear el primer premio.",
-    CENTER_X,
-    cardY + 350,
-    cardW - 80,
-    40,
-  );
-
-  drawPrizeGrid(cardX + 34, cardY + 438, cardW - 68, level);
-
-  const remaining = Math.max(1, Math.ceil(GAME_CONFIG.resultSeconds - state.screenTimer));
-  ctx.fillStyle = "rgba(255,255,255,0.7)";
-  ctx.font = "600 26px Trebuchet MS";
-  ctx.fillText(`Volviendo al inicio en ${remaining}`, CENTER_X, 1110);
   ctx.restore();
 }
 
@@ -1753,18 +1872,19 @@ function drawImpactEffects() {
 }
 
 function drawCanvasHud() {
+  drawHudLogo(CENTER_X, 76, 112);
   drawScorePanel();
+  drawTimerDial();
 }
 
 function drawScorePanel() {
-  const x = 32;
-  const y = 26;
-  const width = W - 64;
-  const height = 150;
-  const trackX = x + 68;
-  const trackY = y + 96;
-  const trackWidth = width - 136;
-  const trackEndX = trackX + trackWidth;
+  const width = W - 150;
+  const x = (W - width) / 2;
+  const y = 176;
+  const height = 116;
+  const trackX = x + 58;
+  const trackY = y + 62;
+  const trackWidth = width - 116;
 
   ctx.save();
   ctx.fillStyle = "rgba(3, 16, 39, 0.68)";
@@ -1775,26 +1895,77 @@ function drawScorePanel() {
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = "rgba(255,255,255,0.72)";
-  ctx.font = "700 17px Trebuchet MS";
-  ctx.textAlign = "left";
-  ctx.fillText("PUNTAJE", trackX, y + 34);
-  ctx.textAlign = "right";
-  ctx.fillText("TIEMPO", trackEndX, y + 34);
-
   ctx.fillStyle = "#ffffff";
-  ctx.font = "700 34px Trebuchet MS";
+  ctx.font = "700 29px Trebuchet MS";
   ctx.textAlign = "left";
-  ctx.fillText(`${Math.round(state.score)}%`, trackX, y + 72);
-  ctx.textAlign = "right";
-  ctx.fillText(`${Math.ceil(state.timeLeft)}s`, trackEndX, y + 72);
+  ctx.fillText("Puntos " + Math.round(state.score), trackX, y + 40);
 
-  ctx.textAlign = "left";
-  drawProgressTrack(trackX, trackY, trackWidth, 18, state.score, state.prizeLevel);
+  drawProgressTrack(trackX, trackY, trackWidth, 18, state.score);
   ctx.restore();
 }
 
-function drawProgressTrack(x, y, width, height, score, prizeLevel) {
+function drawHudLogo(x, y, width) {
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.24)";
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetY = 5;
+
+  if (images.logoOmo.complete && images.logoOmo.naturalWidth) {
+    const height = width * (images.logoOmo.naturalHeight / images.logoOmo.naturalWidth);
+    ctx.drawImage(images.logoOmo, x - width / 2, y - height / 2, width, height);
+  } else {
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 24px Trebuchet MS";
+    ctx.textAlign = "center";
+    ctx.fillText("OMO", x, y + 8);
+  }
+
+  ctx.restore();
+}
+
+function drawTimerDial() {
+  const cx = CENTER_X;
+  const cy = H - 112;
+  const radius = 54;
+  const progress = clamp(state.timeLeft / GAME_CONFIG.roundSeconds, 0, 1);
+
+  ctx.save();
+  ctx.fillStyle = "rgba(3, 16, 39, 0.72)";
+  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius + 15, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.lineWidth = 10;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const gradient = ctx.createLinearGradient(cx - radius, cy - radius, cx + radius, cy + radius);
+  gradient.addColorStop(0, "#70ffc1");
+  gradient.addColorStop(0.55, "#58d9ff");
+  gradient.addColorStop(1, state.timeLeft <= 5 ? "#ff5a66" : PRIZE_COLOR);
+  ctx.strokeStyle = gradient;
+  ctx.lineWidth = 10;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(255,255,255,0.72)";
+  ctx.font = "700 15px Trebuchet MS";
+  ctx.textAlign = "center";
+  ctx.fillText("TIEMPO", cx, cy - 6);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "700 28px Trebuchet MS";
+  ctx.fillText(Math.ceil(state.timeLeft) + "s", cx, cy + 26);
+  ctx.restore();
+}
+
+function drawProgressTrack(x, y, width, height, score) {
   ctx.fillStyle = "rgba(255,255,255,0.12)";
   ctx.beginPath();
   ctx.roundRect(x, y, width, height, 999);
@@ -1802,8 +1973,8 @@ function drawProgressTrack(x, y, width, height, score, prizeLevel) {
 
   const gradient = ctx.createLinearGradient(x, y, x + width, y);
   gradient.addColorStop(0, "#58d9ff");
-  gradient.addColorStop(0.34, "#70ffc1");
-  gradient.addColorStop(0.67, "#ffe16f");
+  gradient.addColorStop(0.55, "#70ffc1");
+  gradient.addColorStop(0.75, PRIZE_COLOR);
   gradient.addColorStop(1, "#ff5a66");
 
   const fillWidth = clamp(width * (score / 100), 0, width);
@@ -1815,73 +1986,74 @@ function drawProgressTrack(x, y, width, height, score, prizeLevel) {
   ctx.fillRect(x, y, width, height);
   ctx.restore();
 
+  const markerX = x + width * (PRIZE_THRESHOLD / 100);
   const markerY = y + height / 2;
-  const labelY = y + 44;
+  const wonPrize = score >= PRIZE_THRESHOLD;
 
   ctx.save();
-  ctx.globalAlpha = 0.28;
-  ctx.strokeStyle = "rgba(255,255,255,0.8)";
-  ctx.lineWidth = 2;
-  for (let index = 0; index < PRIZE_LEVELS.length - 1; index += 1) {
-    const dividerX = x + width * (PRIZE_LEVELS[index].threshold / 100);
-    ctx.beginPath();
-    ctx.moveTo(dividerX, y + 3);
-    ctx.lineTo(dividerX, y + height - 3);
-    ctx.stroke();
-  }
-  ctx.restore();
+  ctx.strokeStyle = "rgba(255,255,255,0.62)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(markerX, y - 10);
+  ctx.lineTo(markerX, y + height + 10);
+  ctx.stroke();
 
-  ctx.font = "700 14px Trebuchet MS";
+  ctx.fillStyle = "rgba(2, 12, 30, 0.58)";
+  ctx.beginPath();
+  ctx.arc(markerX, markerY, 17, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = wonPrize ? PRIZE_COLOR : "rgba(255,255,255,0.64)";
+  ctx.beginPath();
+  ctx.arc(markerX, markerY, 11, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = wonPrize ? "#ffffff" : "rgba(255,255,255,0.72)";
+  ctx.font = "700 17px Trebuchet MS";
   ctx.textAlign = "center";
-  for (let index = 0; index < PRIZE_LEVELS.length; index += 1) {
-    const prize = PRIZE_LEVELS[index];
-    const cx = x + width * (prize.threshold / 100);
-    const labelX = clamp(cx, x + 34, x + width - 34);
-    const unlocked = index < prizeLevel;
-
-    ctx.fillStyle = "rgba(2, 12, 30, 0.48)";
-    ctx.beginPath();
-    ctx.arc(cx, markerY, 13, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = unlocked ? prize.color : "rgba(255,255,255,0.5)";
-    ctx.beginPath();
-    ctx.arc(cx, markerY, 9, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = unlocked ? "#ffffff" : "rgba(255,255,255,0.6)";
-    ctx.fillText(prize.label, labelX, labelY);
-  }
+  ctx.fillText(PRIZE_LABEL, markerX, y - 18);
+  ctx.restore();
   ctx.textAlign = "left";
 }
 
-function drawPrizeGrid(x, y, width, level) {
-  const gap = 10;
-  const itemW = (width - gap * 3) / 4;
-  const itemH = 86;
+function drawPrizeGoal(x, y, width, score) {
+  const goalReached = score >= PRIZE_THRESHOLD;
+  const height = 94;
+  const innerX = x + 28;
+  const innerW = width - 56;
+  const markerX = innerX + innerW * (PRIZE_THRESHOLD / 100);
 
-  for (let index = 0; index < PRIZE_LEVELS.length; index += 1) {
-    const prize = PRIZE_LEVELS[index];
-    const itemX = x + index * (itemW + gap);
-    const unlocked = index < level;
+  ctx.save();
+  ctx.fillStyle = goalReached ? "rgba(255,225,111,0.17)" : "rgba(255,255,255,0.07)";
+  ctx.strokeStyle = goalReached ? PRIZE_COLOR : "rgba(255,255,255,0.16)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(x, y, width, height, 22);
+  ctx.fill();
+  ctx.stroke();
 
-    ctx.fillStyle = unlocked ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.07)";
-    ctx.strokeStyle = unlocked ? prize.color : "rgba(255,255,255,0.15)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(itemX, y, itemW, itemH, 18);
-    ctx.fill();
-    ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,0.14)";
+  ctx.beginPath();
+  ctx.roundRect(innerX, y + 34, innerW, 14, 999);
+  ctx.fill();
 
-    ctx.fillStyle = unlocked ? prize.color : "rgba(255,255,255,0.45)";
-    ctx.font = "700 23px Trebuchet MS";
-    ctx.textAlign = "center";
-    ctx.fillText(`${prize.threshold}%`, itemX + itemW / 2, y + 34);
+  ctx.fillStyle = goalReached ? PRIZE_COLOR : "rgba(255,255,255,0.28)";
+  ctx.beginPath();
+  ctx.roundRect(innerX, y + 34, clamp(innerW * (score / 100), 0, innerW), 14, 999);
+  ctx.fill();
 
-    ctx.fillStyle = unlocked ? "#ffffff" : "rgba(255,255,255,0.56)";
-    ctx.font = "700 15px Trebuchet MS";
-    ctx.fillText(prize.label, itemX + itemW / 2, y + 62);
-  }
+  ctx.strokeStyle = PRIZE_COLOR;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(markerX, y + 22);
+  ctx.lineTo(markerX, y + 62);
+  ctx.stroke();
+
+  ctx.fillStyle = goalReached ? "#ffffff" : "rgba(255,255,255,0.72)";
+  ctx.font = "700 22px Trebuchet MS";
+  ctx.textAlign = "center";
+  ctx.fillText(PRIZE_LABEL + " " + PRIZE_THRESHOLD + "%", markerX, y + 82);
+  ctx.restore();
 }
 
 function drawSoapControls() {
