@@ -12,8 +12,10 @@ GPIO_RIGHT_PIN="${GPIO_RIGHT_PIN:-27}"
 GPIO_DEBOUNCE="${GPIO_DEBOUNCE:-0.16}"
 GPIO_PULL_UP="${GPIO_PULL_UP:-0}"
 GPIO_STDIN_SIM="${GPIO_STDIN_SIM:-0}"
+GPIO_DEBUG="${GPIO_DEBUG:-0}"
 CHROMIUM_BIN="${CHROMIUM_BIN:-}"
 CHROMIUM_USER_DATA_DIR="${CHROMIUM_USER_DATA_DIR:-/tmp/omo-chromium-profile}"
+EFFECTS_SCALE="${EFFECTS_SCALE:-0.7}"
 
 if [[ -z "$CHROMIUM_BIN" ]]; then
   if command -v chromium >/dev/null 2>&1; then
@@ -32,7 +34,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-export GPIO_WS_HOST GPIO_WS_PORT GPIO_LEFT_PIN GPIO_RIGHT_PIN GPIO_DEBOUNCE GPIO_PULL_UP GPIO_STDIN_SIM
+export GPIO_WS_HOST GPIO_WS_PORT GPIO_LEFT_PIN GPIO_RIGHT_PIN GPIO_DEBOUNCE GPIO_PULL_UP GPIO_STDIN_SIM GPIO_DEBUG
 
 python3 gpio_ws_bridge.py &
 GPIO_PID="$!"
@@ -44,10 +46,11 @@ mkdir -p "$CHROMIUM_USER_DATA_DIR"
 
 sleep 1
 
-GAME_URL="http://127.0.0.1:${HTTP_PORT}/?bridge=ws://127.0.0.1:${GPIO_WS_PORT}"
+GAME_URL="http://127.0.0.1:${HTTP_PORT}/?bridge=ws://127.0.0.1:${GPIO_WS_PORT}&effects=${EFFECTS_SCALE}"
 echo "HTTP server: http://127.0.0.1:${HTTP_PORT}/"
 echo "GPIO bridge: ws://127.0.0.1:${GPIO_WS_PORT}"
 echo "GPIO pins BCM: left=${GPIO_LEFT_PIN}, right=${GPIO_RIGHT_PIN}, HIGH press, debounce=${GPIO_DEBOUNCE}s"
+echo "Effects scale: ${EFFECTS_SCALE}"
 echo "Opening Chromium kiosk: $GAME_URL"
 
 "$CHROMIUM_BIN" \

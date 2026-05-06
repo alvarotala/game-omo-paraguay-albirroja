@@ -211,3 +211,22 @@ Update 2026-05-05 Raspberry runtime hardening:
 - `start.sh` ahora prefiere `chromium` sobre `chromium-browser`, usa perfil limpio `CHROMIUM_USER_DATA_DIR=/tmp/omo-chromium-profile` y agrega flags para reducir ruido de background networking, sync, component update y crashpad.
 - Se agrego `CHROMIUM_EXTRA_FLAGS` para poder probar flags adicionales sin editar el script.
 - Validaciones: `bash -n start.sh` y compilacion sintactica de `kiosk_http_server.py`.
+
+Update 2026-05-05 GPIO bridge debug/polling:
+- Como `test.py` leia correctamente BCM17/27 pero el juego no respondia, el bridge cambio de `gpiozero.Button.when_pressed` a polling con `DigitalInputDevice`, igual que el test.
+- El bridge ahora loguea estados iniciales, cambios HIGH/LOW y eventos enviados a clientes WebSocket.
+- El cliente JS ahora loguea conexion, cierre/error y mensajes de botones recibidos para debug en Chromium.
+- Validaciones: compilacion sintactica de `gpio_ws_bridge.py` y `node --check game.js`.
+
+Update 2026-05-05 Raspberry performance pass:
+- Agregado `GAME_CONFIG.performance` y query `?effects=` para escalar particulas, burbujas y efectos pesados sin tocar codigo.
+- `start.sh` ahora usa `EFFECTS_SCALE=0.7` por defecto y lo pasa al juego; se puede bajar a `0.55` para Pi 5 si aparecen drops.
+- Cacheadas capas estaticas de fondo y glow del escenario para no recalcular gradientes e imagen base en cada frame.
+- README actualizado con recomendaciones de optimizacion Raspberry/Chromium/config.txt.
+- Logs detallados del cliente WebSocket y del polling GPIO quedan apagados por defecto; pueden activarse con `?debugInput=1` y `GPIO_DEBUG=1`.
+
+Update 2026-05-05 Raspberry typography:
+- Agregada fuente local Barlow Condensed Bold/ExtraBold en `assets/fonts` con licencia OFL.
+- `styles.css` define `@font-face` para `OMO Display` y usa fallbacks Linux-friendly.
+- `game.js` centraliza el font canvas en `gameFont()` y reemplaza Trebuchet MS por la familia local.
+- `kiosk_http_server.py` ahora declara MIME para fuentes (`.ttf`, `.otf`, `.woff`, `.woff2`).

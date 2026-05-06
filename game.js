@@ -4,6 +4,11 @@ const ctx = canvas.getContext("2d");
 const W = canvas.width;
 const H = canvas.height;
 const CENTER_X = W / 2;
+const DISPLAY_FONT = '"OMO Display", "Barlow Condensed", "DejaVu Sans Condensed", "Liberation Sans", Arial, sans-serif';
+
+function gameFont(weight, size) {
+  return `${weight} ${size}px ${DISPLAY_FONT}`;
+}
 
 const GAME_CONFIG = {
   roundSeconds: 35,
@@ -13,6 +18,11 @@ const GAME_CONFIG = {
   difficulty: 1,
   attractVideoSrc: "video.mp4",
   inputBridgeUrl: "",
+  debugInput: false,
+  performance: {
+    effectsScale: 1,
+    maxBubbles: 120,
+  },
   audio: {
     enabled: true,
     masterVolume: 0.68,
@@ -120,6 +130,14 @@ const images = {
   logoOmo: loadImage("./assets/logo-omo.png"),
 };
 
+const staticLayers = {
+  background: createRenderLayer(),
+  stageGlow: createRenderLayer(),
+  backgroundReady: false,
+  stageGlowReady: false,
+};
+images.background.addEventListener("load", prepareBackgroundLayer);
+
 const attractVideo = createAttractVideo();
 const audio = createAudioManager();
 const inputBridge = createInputBridge();
@@ -202,6 +220,17 @@ function applyRuntimeOverrides() {
     GAME_CONFIG.inputBridgeUrl = bridge;
   }
 
+  const effects = Number(params.get("effects"));
+  if (Number.isFinite(effects) && effects > 0) {
+    GAME_CONFIG.performance.effectsScale = clamp(effects, 0.25, 1.2);
+    GAME_CONFIG.performance.maxBubbles = Math.round(120 * GAME_CONFIG.performance.effectsScale);
+  }
+
+  const debugInput = params.get("debugInput") || params.get("debug");
+  if (debugInput === "1" || debugInput === "true") {
+    GAME_CONFIG.debugInput = true;
+  }
+
   const audioOverride = params.get("audio");
   if (audioOverride === "0" || audioOverride === "false") {
     GAME_CONFIG.audio.enabled = false;
@@ -248,6 +277,48 @@ function loadImage(src) {
   return image;
 }
 
+function createRenderLayer() {
+  const layer = document.createElement("canvas");
+  layer.width = W;
+  layer.height = H;
+  return layer;
+}
+
+function prepareBackgroundLayer() {
+  const layerCtx = staticLayers.background.getContext("2d");
+
+  if (images.background.complete && images.background.naturalWidth) {
+    layerCtx.drawImage(images.background, 0, 0, W, H);
+  } else {
+    const gradient = layerCtx.createLinearGradient(0, 0, 0, H);
+    gradient.addColorStop(0, "#145fac");
+    gradient.addColorStop(0.45, "#0d4074");
+    gradient.addColorStop(1, "#061934");
+    layerCtx.fillStyle = gradient;
+    layerCtx.fillRect(0, 0, W, H);
+  }
+
+  const vignette = layerCtx.createRadialGradient(CENTER_X, H * 0.4, 80, CENTER_X, H * 0.55, H * 0.75);
+  vignette.addColorStop(0, "rgba(255,255,255,0.14)");
+  vignette.addColorStop(0.55, "rgba(7,46,92,0.12)");
+  vignette.addColorStop(1, "rgba(2,8,18,0.54)");
+  layerCtx.fillStyle = vignette;
+  layerCtx.fillRect(0, 0, W, H);
+  staticLayers.backgroundReady = true;
+}
+
+function prepareStageGlowLayer() {
+  const layerCtx = staticLayers.stageGlow.getContext("2d");
+  layerCtx.clearRect(0, 0, W, H);
+  const glow = layerCtx.createRadialGradient(CENTER_X, H * 0.51, 55, CENTER_X, H * 0.51, 370);
+  glow.addColorStop(0, "rgba(255,255,255,0.22)");
+  glow.addColorStop(0.45, "rgba(106,216,255,0.08)");
+  glow.addColorStop(1, "rgba(255,255,255,0)");
+  layerCtx.fillStyle = glow;
+  layerCtx.fillRect(0, 0, W, H);
+  staticLayers.stageGlowReady = true;
+}
+
 function createInputBridge() {
   const url = GAME_CONFIG.inputBridgeUrl;
   if (!url) {
@@ -261,6 +332,9 @@ function createInputBridge() {
   function setStatus(connected) {
     state.inputBridge.connected = connected;
     state.inputBridge.enabled = true;
+    if (GAME_CONFIG.debugInput) {
+      console.info("OMO input bridge", connected ? "connected" : "disconnected", GAME_CONFIG.inputBridgeUrl);
+    }
   }
 
   function scheduleReconnect() {
@@ -305,9 +379,15 @@ function createInputBridge() {
   function handleMessage(event) {
     const side = normalizeSide(event.data);
     if (!side) {
+      if (GAME_CONFIG.debugInput) {
+        console.warn("OMO input bridge ignored message", event.data);
+      }
       return;
     }
 
+    if (GAME_CONFIG.debugInput) {
+      console.info("OMO input bridge button", side, event.data);
+    }
     state.inputBridge.lastSide = side;
     state.inputBridge.lastEventAt = state.time;
     handleAction(side);
@@ -324,8 +404,16 @@ function createInputBridge() {
       setStatus(true);
     });
     socket.addEventListener("message", handleMessage);
-    socket.addEventListener("close", scheduleReconnect);
-    socket.addEventListener("error", () => {
+    socket.addEventListener("close", (event) => {
+      if (GAME_CONFIG.debugInput) {
+        console.warn("OMO input bridge closed", event.code, event.reason);
+      }
+      scheduleReconnect();
+    });
+    socket.addEventListener("error", (event) => {
+      if (GAME_CONFIG.debugInput) {
+        console.error("OMO input bridge error", event);
+      }
       socket?.close();
     });
   }
@@ -442,6 +530,14 @@ function clamp(value, min, max) {
 
 function randomBetween(min, max) {
   return min + Math.random() * (max - min);
+}
+
+function effectAmount(amount) {
+  return Math.max(1, Math.round(amount * GAME_CONFIG.performance.effectsScale));
+}
+
+function canAddBubble() {
+  return state.bubbles.length < GAME_CONFIG.performance.maxBubbles;
 }
 
 function getPrizeLevel(score) {
@@ -691,7 +787,7 @@ function shoot(side) {
     age: 0,
     maxAge: 0.5,
     width: 104,
-    foam: Array.from({ length: 46 }, () => {
+    foam: Array.from({ length: effectAmount(46) }, () => {
       const t = randomBetween(0, 0.68);
       const lane = randomBetween(-1.05, 1.05);
       const point = getSprayPoint(config, t, lane);
@@ -710,12 +806,12 @@ function shoot(side) {
     }),
   });
 
-  spawnBubbleStream(side, 36);
+  spawnBubbleStream(side, effectAmount(36));
 }
 
 function spawnBubbleStream(side, amount) {
   const config = SPRAY_CONFIG[side];
-  for (let index = 0; index < amount; index += 1) {
+  for (let index = 0; index < amount && canAddBubble(); index += 1) {
     const t = randomBetween(0.08, 0.92);
     const lane = randomBetween(-1.05, 1.05);
     const point = getSprayPoint(config, t, lane);
@@ -734,7 +830,7 @@ function spawnBubbleStream(side, amount) {
 }
 
 function spawnCleanBurst(x, y) {
-  for (let index = 0; index < 18; index += 1) {
+  for (let index = 0; index < effectAmount(18) && canAddBubble(); index += 1) {
     state.bubbles.push({
       x: x + randomBetween(-18, 18),
       y: y + randomBetween(-16, 16),
@@ -1083,7 +1179,7 @@ function triggerShirtImpact(dirt, hit) {
     maxAge: 0.78,
     color: dirt.sprite,
     ringColor: dirt.kind === "pasto" ? "#a6ff7a" : "#ff775f",
-    particles: Array.from({ length: 26 }, () => {
+    particles: Array.from({ length: effectAmount(26) }, () => {
       const angle = randomBetween(0, Math.PI * 2);
       const speed = randomBetween(110, 360);
       return {
@@ -1325,25 +1421,21 @@ function getScreenShakeOffset() {
 }
 
 function drawBackground() {
-  if (images.background.complete) {
-    ctx.drawImage(images.background, 0, 0, W, H);
-  } else {
-    const gradient = ctx.createLinearGradient(0, 0, 0, H);
-    gradient.addColorStop(0, "#145fac");
-    gradient.addColorStop(0.45, "#0d4074");
-    gradient.addColorStop(1, "#061934");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, W, H);
+  if (!staticLayers.backgroundReady) {
+    prepareBackgroundLayer();
   }
 
-  ctx.save();
-  const vignette = ctx.createRadialGradient(CENTER_X, H * 0.4, 80, CENTER_X, H * 0.55, H * 0.75);
-  vignette.addColorStop(0, "rgba(255,255,255,0.14)");
-  vignette.addColorStop(0.55, "rgba(7,46,92,0.12)");
-  vignette.addColorStop(1, "rgba(2,8,18,0.54)");
-  ctx.fillStyle = vignette;
+  if (staticLayers.backgroundReady) {
+    ctx.drawImage(staticLayers.background, 0, 0);
+    return;
+  }
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, H);
+  gradient.addColorStop(0, "#145fac");
+  gradient.addColorStop(0.45, "#0d4074");
+  gradient.addColorStop(1, "#061934");
+  ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, W, H);
-  ctx.restore();
 }
 
 function drawAttractScreen() {
@@ -1405,10 +1497,10 @@ function drawAttractProductScene() {
   ctx.save();
   ctx.textAlign = "center";
   ctx.fillStyle = "#ffffff";
-  ctx.font = "700 31px Trebuchet MS";
+  ctx.font = gameFont(800, 31);
   ctx.fillText("OMO ULTRAPOWER", CENTER_X, 132);
 
-  ctx.font = "700 60px Trebuchet MS";
+  ctx.font = gameFont(800, 60);
   wrapTextCentered("PROTEGE TU CAMISETA", CENTER_X, 215, 610, 64);
 
   ctx.globalAlpha = 0.92;
@@ -1427,7 +1519,7 @@ function drawStartScreen() {
   drawStartLogo(CENTER_X, 190, 195);
 
   ctx.fillStyle = "rgba(255,255,255,0.94)";
-  ctx.font = "700 34px Trebuchet MS";
+  ctx.font = gameFont(700, 34);
   ctx.fillText("Mantené a la albirroja", CENTER_X, 350);
   ctx.fillText("impecable con OMO Ultra", CENTER_X, 392);
   ctx.fillText("Power y ganá!", CENTER_X, 434);
@@ -1435,7 +1527,7 @@ function drawStartScreen() {
   drawStartProduct(CENTER_X, 704, 230);
 
   ctx.fillStyle = "rgba(255,255,255,0.84)";
-  ctx.font = "700 27px Trebuchet MS";
+  ctx.font = gameFont(700, 27);
   ctx.fillText("Presiona izquierda o derecha para jugar", CENTER_X, 1016);
   drawStartPill(CENTER_X - 150, 1088, "←", SPRAY_CONFIG.left.color);
   drawStartPill(CENTER_X + 150, 1088, "→", SPRAY_CONFIG.right.color);
@@ -1454,7 +1546,7 @@ function drawStartLogo(x, y, width) {
     ctx.drawImage(images.logoOmo, x - width / 2, y - height / 2, width, height);
   } else {
     ctx.fillStyle = "#ffffff";
-    ctx.font = "700 62px Trebuchet MS";
+    ctx.font = gameFont(800, 62);
     ctx.textAlign = "center";
     ctx.fillText("OMO", x, y + 20);
   }
@@ -1495,19 +1587,19 @@ function drawInstructionsScreen() {
   drawHudLogo(CENTER_X, 76, 112);
 
   ctx.fillStyle = "#ffffff";
-  ctx.font = "700 50px Trebuchet MS";
+  ctx.font = gameFont(800, 50);
   ctx.fillText("COMO JUGAR", CENTER_X, 218);
 
   drawInstructionDiagram();
 
   ctx.fillStyle = "rgba(255,255,255,0.92)";
-  ctx.font = "600 30px Trebuchet MS";
+  ctx.font = gameFont(700, 30);
   wrapTextCentered("Usa el boton del lado donde aparece la suciedad.", CENTER_X, 902, 585, 40);
   wrapTextCentered("Cada limpieza suma porcentaje. Si toca la camiseta, resta.", CENTER_X, 1002, 585, 40);
 
   const remaining = Math.max(1, Math.ceil(GAME_CONFIG.instructionsSeconds - state.screenTimer));
   ctx.fillStyle = "rgba(255,255,255,0.76)";
-  ctx.font = "700 28px Trebuchet MS";
+  ctx.font = gameFont(700, 28);
   ctx.fillText(`Empieza en ${remaining}`, CENTER_X, 1162);
   ctx.restore();
 }
@@ -1531,7 +1623,7 @@ function drawResultScreen() {
 
   const remaining = Math.max(1, Math.ceil(GAME_CONFIG.resultSeconds - state.screenTimer));
   ctx.fillStyle = "rgba(255,255,255,0.68)";
-  ctx.font = "600 24px Trebuchet MS";
+  ctx.font = gameFont(700, 24);
   ctx.fillText("Volviendo al inicio en " + remaining, CENTER_X, 1156);
   ctx.restore();
 }
@@ -1557,10 +1649,10 @@ function drawCleanWinScene() {
   ctx.shadowColor = "rgba(112,255,193,0.72)";
   ctx.shadowBlur = 18;
   ctx.fillStyle = "#ffffff";
-  ctx.font = "700 78px Trebuchet MS";
+  ctx.font = gameFont(800, 78);
   ctx.fillText("GANASTE", CENTER_X, 948);
 
-  ctx.font = "700 38px Trebuchet MS";
+  ctx.font = gameFont(700, 38);
   ctx.fillText("SOLICITA TU PREMIO", CENTER_X, 1008);
   ctx.restore();
 }
@@ -1569,7 +1661,7 @@ function drawTimeLossScene() {
   drawRedClock(CENTER_X, 534, 130);
 
   ctx.fillStyle = "#ffffff";
-  ctx.font = "700 56px Trebuchet MS";
+  ctx.font = gameFont(800, 56);
   wrapTextCentered("TE QUEDASTE SIN TIEMPO", CENTER_X, 790, 600, 62);
 }
 
@@ -1701,14 +1793,10 @@ function drawRedClock(x, y, radius) {
 }
 
 function drawStageGlow() {
-  ctx.save();
-  const glow = ctx.createRadialGradient(CENTER_X, H * 0.51, 55, CENTER_X, H * 0.51, 370);
-  glow.addColorStop(0, "rgba(255,255,255,0.22)");
-  glow.addColorStop(0.45, "rgba(106,216,255,0.08)");
-  glow.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, W, H);
-  ctx.restore();
+  if (!staticLayers.stageGlowReady) {
+    prepareStageGlowLayer();
+  }
+  ctx.drawImage(staticLayers.stageGlow, 0, 0);
 }
 
 function drawShirt() {
@@ -1896,7 +1984,7 @@ function drawScorePanel() {
   ctx.stroke();
 
   ctx.fillStyle = "#ffffff";
-  ctx.font = "700 29px Trebuchet MS";
+  ctx.font = gameFont(800, 29);
   ctx.textAlign = "left";
   ctx.fillText("Puntos " + Math.round(state.score), trackX, y + 40);
 
@@ -1915,7 +2003,7 @@ function drawHudLogo(x, y, width) {
     ctx.drawImage(images.logoOmo, x - width / 2, y - height / 2, width, height);
   } else {
     ctx.fillStyle = "#ffffff";
-    ctx.font = "700 24px Trebuchet MS";
+    ctx.font = gameFont(700, 24);
     ctx.textAlign = "center";
     ctx.fillText("OMO", x, y + 8);
   }
@@ -1956,11 +2044,11 @@ function drawTimerDial() {
   ctx.stroke();
 
   ctx.fillStyle = "rgba(255,255,255,0.72)";
-  ctx.font = "700 15px Trebuchet MS";
+  ctx.font = gameFont(700, 15);
   ctx.textAlign = "center";
   ctx.fillText("TIEMPO", cx, cy - 6);
   ctx.fillStyle = "#ffffff";
-  ctx.font = "700 28px Trebuchet MS";
+  ctx.font = gameFont(700, 28);
   ctx.fillText(Math.ceil(state.timeLeft) + "s", cx, cy + 26);
   ctx.restore();
 }
@@ -2009,7 +2097,7 @@ function drawProgressTrack(x, y, width, height, score) {
   ctx.fill();
 
   ctx.fillStyle = wonPrize ? "#ffffff" : "rgba(255,255,255,0.72)";
-  ctx.font = "700 17px Trebuchet MS";
+  ctx.font = gameFont(700, 17);
   ctx.textAlign = "center";
   ctx.fillText(PRIZE_LABEL, markerX, y - 18);
   ctx.restore();
@@ -2050,7 +2138,7 @@ function drawPrizeGoal(x, y, width, score) {
   ctx.stroke();
 
   ctx.fillStyle = goalReached ? "#ffffff" : "rgba(255,255,255,0.72)";
-  ctx.font = "700 22px Trebuchet MS";
+  ctx.font = gameFont(700, 22);
   ctx.textAlign = "center";
   ctx.fillText(PRIZE_LABEL + " " + PRIZE_THRESHOLD + "%", markerX, y + 82);
   ctx.restore();
@@ -2142,7 +2230,7 @@ function drawInstructionDiagram() {
 
   ctx.globalAlpha = 1;
   ctx.fillStyle = "#ffffff";
-  ctx.font = "700 76px Trebuchet MS";
+  ctx.font = gameFont(800, 76);
   ctx.textAlign = "center";
   ctx.fillText("←", W * 0.31, 760);
   ctx.fillText("→", W * 0.69, 760);
@@ -2177,7 +2265,7 @@ function drawStartPill(x, y, icon, color) {
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = "#ffffff";
-  ctx.font = "700 52px Trebuchet MS";
+  ctx.font = gameFont(800, 52);
   ctx.textAlign = "center";
   ctx.fillText(icon, x, y + 18);
   ctx.restore();
@@ -2189,7 +2277,7 @@ function drawFeedback() {
   for (const item of state.feedback) {
     const alpha = Math.max(0, 1 - item.age / item.maxAge);
     ctx.globalAlpha = alpha;
-    ctx.font = `700 ${item.size || 26}px Trebuchet MS`;
+    ctx.font = gameFont(800, item.size || 26);
     if (item.stroke) {
       ctx.lineWidth = 7;
       ctx.strokeStyle = item.stroke;
@@ -2270,6 +2358,8 @@ function frame(timestamp) {
 }
 
 function init() {
+  prepareBackgroundLayer();
+  prepareStageGlowLayer();
   prepareShirtMask();
   inputBridge.connect();
   syncHud();

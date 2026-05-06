@@ -1,3 +1,19 @@
+@font-face {
+  font-family: "OMO Display";
+  src: url("./assets/fonts/BarlowCondensed-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "OMO Display";
+  src: url("./assets/fonts/BarlowCondensed-ExtraBold.ttf") format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: block;
+}
+
 :root {
   color-scheme: light;
   --bg-1: #020711;
@@ -14,7 +30,7 @@ body {
   margin: 0;
   width: 100%;
   height: 100%;
-  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  font-family: "OMO Display", "Barlow Condensed", "DejaVu Sans Condensed", "Liberation Sans", Arial, sans-serif;
   background: linear-gradient(180deg, var(--bg-2), var(--bg-1) 76%);
   color: var(--text-main);
   overflow: hidden;

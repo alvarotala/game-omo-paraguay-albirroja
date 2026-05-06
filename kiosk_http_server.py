@@ -13,6 +13,10 @@ class KioskRequestHandler(SimpleHTTPRequestHandler):
         ".ogg": "audio/ogg",
         ".oga": "audio/ogg",
         ".wav": "audio/wav",
+        ".ttf": "font/ttf",
+        ".otf": "font/otf",
+        ".woff": "font/woff",
+        ".woff2": "font/woff2",
     }
 
     def log_message(self, format, *args):

@@ -88,15 +88,29 @@ GPIO_RIGHT_PIN=27           # Pin BCM para derecha
 GPIO_DEBOUNCE=0.16          # Antirrebote en segundos
 GPIO_PULL_UP=0              # 0 pull-down, 1 pull-up
 GPIO_STDIN_SIM=0            # 1 habilita simulacion por teclado en consola del bridge
+GPIO_DEBUG=0                # 1 muestra logs detallados de cada GPIO/evento
 CHROMIUM_BIN=chromium       # Override manual del binario de Chromium
 CHROMIUM_USER_DATA_DIR=/tmp/omo-chromium-profile  # Perfil limpio para kiosk
 CHROMIUM_EXTRA_FLAGS=""      # Flags extra para pruebas
+EFFECTS_SCALE=0.7             # Escala visual de particulas/efectos para Raspberry
 ```
 
 Ejemplo:
 
 ```bash
 HTTP_PORT=8080 GPIO_WS_PORT=9876 GPIO_LEFT_PIN=23 GPIO_RIGHT_PIN=24 ./start.sh
+```
+
+Para bajar carga grafica en Raspberry Pi 5 sin cambiar codigo:
+
+```bash
+EFFECTS_SCALE=0.55 ./start.sh
+```
+
+Para probar flags GPU de Chromium sin editar el launcher:
+
+```bash
+CHROMIUM_EXTRA_FLAGS="--enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist" ./start.sh
 ```
 
 ## Configuracion del juego
@@ -255,6 +269,23 @@ En kiosk debe usarse `start.sh`, porque agrega:
 ```
 
 Tambien revisar que no se haya abierto con `?audio=0`.
+
+## Tipografia
+
+La tipografia del juego esta bundleada en `assets/fonts` como Barlow Condensed, licenciada bajo SIL Open Font License 1.1. Esto evita que Raspberry Pi OS caiga en una fuente distinta o fea cuando no tiene las mismas fuentes que macOS.
+
+## Optimizacion en Raspberry Pi 5
+
+El juego renderiza internamente a 720x1280 y Chromium lo escala a pantalla completa. En una TV 4K, el Pi trabaja mucho mas escalando y componiendo, asi que para maxima fluidez conviene probar en este orden:
+
+- Usar `EFFECTS_SCALE=0.55 ./start.sh` si aparecen drops de FPS. El default del launcher es `0.7`.
+- Si la activacion lo permite, configurar la salida del sistema a 1080x1920 portrait en lugar de 4K. Visualmente se ve bien para este canvas y reduce bastante la carga.
+- Probar `CHROMIUM_EXTRA_FLAGS="--enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist" ./start.sh`; si algun flag da problemas, quitarlo y volver al default.
+- Revisar temperatura y throttling con `vcgencmd measure_temp` y `vcgencmd get_throttled`. Si hay throttling, usar fuente oficial/adecuada y cooling activo.
+- Mantener Raspberry Pi OS actualizado con `sudo apt update && sudo apt full-upgrade -y`.
+- En Raspberry Pi OS Bookworm, revisar `/boot/firmware/config.txt`; en versiones anteriores puede ser `/boot/config.txt`. Mantener KMS/V3D activo (`dtoverlay=vc4-kms-v3d`) y evitar 4K si no es imprescindible para el totem.
+- Desactivar apps abiertas, notificaciones, blanking y efectos del escritorio antes de correr el kiosk.
+- Dejar `GPIO_DEBUG=0` durante la activacion; usar `GPIO_DEBUG=1` solo para diagnostico.
 
 ## Notas de operacion
 

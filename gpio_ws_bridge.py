@@ -17,16 +17,22 @@ RIGHT_PIN = int(os.environ.get("GPIO_RIGHT_PIN", "27"))
 DEBOUNCE_SECONDS = float(os.environ.get("GPIO_DEBOUNCE", "0.16"))
 PULL_UP = os.environ.get("GPIO_PULL_UP", "0").lower() in {"1", "true", "yes"}
 STDIN_SIM = os.environ.get("GPIO_STDIN_SIM", "0").lower() in {"1", "true", "yes"}
+GPIO_DEBUG = os.environ.get("GPIO_DEBUG", "0").lower() in {"1", "true", "yes"}
 
 GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 clients = set()
 last_press = {"left": 0.0, "right": 0.0}
 queue = None
-buttons = []
+buttons = {}
 
 
 def log(message):
     print(f"[{formatdate(localtime=True)}] {message}", flush=True)
+
+
+def debug_log(message):
+    if GPIO_DEBUG:
+        log(message)
 
 
 def make_frame(text):
@@ -88,7 +94,7 @@ async def broadcast(side, source="gpio"):
             dead.append(writer)
     for writer in dead:
         clients.discard(writer)
-    log(f"button {side} from {source} sent to {len(clients)} client(s)")
+    debug_log(f"button {side} from {source} sent to {len(clients)} client(s)")
 
 
 def emit(side, source="gpio"):
@@ -157,18 +163,33 @@ async def handle_client(reader, writer):
 
 def setup_gpio():
     try:
-        from gpiozero import Button
+        from gpiozero import DigitalInputDevice
     except Exception as exc:
         log(f"gpiozero unavailable: {exc}. GPIO input disabled on this machine.")
-        return
+        return False
 
-    left = Button(LEFT_PIN, pull_up=PULL_UP, bounce_time=DEBOUNCE_SECONDS)
-    right = Button(RIGHT_PIN, pull_up=PULL_UP, bounce_time=DEBOUNCE_SECONDS)
-    left.when_pressed = lambda: emit("left", "gpio")
-    right.when_pressed = lambda: emit("right", "gpio")
-    buttons.extend([left, right])
+    buttons["left"] = DigitalInputDevice(LEFT_PIN, pull_up=PULL_UP)
+    buttons["right"] = DigitalInputDevice(RIGHT_PIN, pull_up=PULL_UP)
     pull = "pull-up" if PULL_UP else "pull-down"
-    log(f"GPIO ready. left=BCM{LEFT_PIN}, right=BCM{RIGHT_PIN}, {pull}, HIGH press expected")
+    log(f"GPIO polling ready. left=BCM{LEFT_PIN}, right=BCM{RIGHT_PIN}, {pull}, HIGH press expected")
+    left_initial = int(buttons["left"].value)
+    right_initial = int(buttons["right"].value)
+    log(f"Initial GPIO states: left={left_initial}, right={right_initial}")
+    return True
+
+
+async def gpio_poll_loop():
+    previous = {side: int(device.value) for side, device in buttons.items()}
+    while True:
+        for side, device in buttons.items():
+            value = int(device.value)
+            if value != previous[side]:
+                level = "HIGH" if value else "LOW"
+                debug_log(f"GPIO {side} changed to {level}")
+            if value == 1 and previous[side] == 0:
+                emit(side, "gpio")
+            previous[side] = value
+        await asyncio.sleep(0.02)
 
 
 async def stdin_simulator():
@@ -188,10 +209,12 @@ async def stdin_simulator():
 async def main():
     global queue
     queue = asyncio.Queue()
-    setup_gpio()
+    gpio_ready = setup_gpio()
     server = await asyncio.start_server(handle_client, HOST, PORT)
     log(f"WebSocket bridge listening on ws://{HOST}:{PORT}")
     asyncio.create_task(event_pump())
+    if gpio_ready:
+        asyncio.create_task(gpio_poll_loop())
     if STDIN_SIM:
         asyncio.create_task(stdin_simulator())
         log("stdin simulation enabled. Type l or r and press Enter.")
