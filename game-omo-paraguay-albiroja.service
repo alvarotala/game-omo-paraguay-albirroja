@@ -14,6 +14,7 @@ ExecStartPre=/bin/sleep 8
 Environment=DISPLAY=:0
 Environment=XDG_RUNTIME_DIR=/run/user/%U
 Environment=EFFECTS_SCALE=0.55
+Environment=HIDE_MOUSE=1
 Environment=GPIO_DEBUG=0
 Environment=GPIO_STDIN_SIM=0
 

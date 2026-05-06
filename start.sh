@@ -16,6 +16,7 @@ GPIO_DEBUG="${GPIO_DEBUG:-0}"
 CHROMIUM_BIN="${CHROMIUM_BIN:-}"
 CHROMIUM_USER_DATA_DIR="${CHROMIUM_USER_DATA_DIR:-/tmp/omo-chromium-profile}"
 EFFECTS_SCALE="${EFFECTS_SCALE:-0.7}"
+HIDE_MOUSE="${HIDE_MOUSE:-1}"
 
 if [[ -z "$CHROMIUM_BIN" ]]; then
   if command -v chromium >/dev/null 2>&1; then
@@ -31,6 +32,7 @@ fi
 cleanup() {
   [[ -n "${HTTP_PID:-}" ]] && kill "$HTTP_PID" >/dev/null 2>&1 || true
   [[ -n "${GPIO_PID:-}" ]] && kill "$GPIO_PID" >/dev/null 2>&1 || true
+  [[ -n "${UNCLUTTER_PID:-}" ]] && kill "$UNCLUTTER_PID" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT INT TERM
 
@@ -80,6 +82,17 @@ CHROMIUM_PREFS_PY
 
 sleep 1
 
+
+if [[ "$HIDE_MOUSE" == "1" ]]; then
+  if command -v unclutter >/dev/null 2>&1; then
+    unclutter -idle 0.1 -root >/dev/null 2>&1 &
+    UNCLUTTER_PID="$!"
+    echo "Mouse cursor hider: unclutter pid=${UNCLUTTER_PID}"
+  else
+    echo "Mouse cursor hider: unclutter not found. Install with: sudo apt install -y unclutter" >&2
+  fi
+fi
+
 GAME_URL="http://127.0.0.1:${HTTP_PORT}/?bridge=ws://127.0.0.1:${GPIO_WS_PORT}&effects=${EFFECTS_SCALE}"
 echo "HTTP server: http://127.0.0.1:${HTTP_PORT}/"
 echo "GPIO bridge: ws://127.0.0.1:${GPIO_WS_PORT}"
@@ -93,6 +106,8 @@ echo "Opening Chromium kiosk: $GAME_URL"
   --noerrdialogs \
   --no-first-run \
   --no-default-browser-check \
+  --password-store=basic \
+  --use-mock-keychain \
   --disable-infobars \
   --disable-translate \
   --disable-features=Translate,TranslateUI,TranslateSubFrames \

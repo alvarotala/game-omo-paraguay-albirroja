@@ -22,12 +22,13 @@ El jugador protege una camiseta de Paraguay de suciedad, pasto, barro y manchas 
 - Python 3.
 - Chromium (`chromium-browser` o `chromium`).
 - `gpiozero` para leer GPIO.
+- `unclutter` para ocultar el cursor del mouse en kiosk.
 
 En Raspberry OS normalmente `gpiozero` ya viene instalado. Si no esta:
 
 ```bash
 sudo apt update
-sudo apt install -y python3-gpiozero
+sudo apt install -y python3-gpiozero unclutter
 ```
 
 ## Arranque rapido
@@ -44,7 +45,7 @@ Esto hace tres cosas:
 2. Levanta el bridge WebSocket en `ws://127.0.0.1:8765`.
 3. Abre Chromium en kiosk/fullscreen apuntando al juego con el bridge conectado.
 
-Chromium se abre con `--autoplay-policy=no-user-gesture-required` para que el audio funcione tambien cuando el input inicial viene desde los botones fisicos por WebSocket. Tambien se fuerza idioma `es-PY` y se desactiva la traduccion automatica para evitar popups en modo kiosk. El cursor del mouse se oculta por CSS en toda la app.
+Chromium se abre con `--autoplay-policy=no-user-gesture-required` para que el audio funcione tambien cuando el input inicial viene desde los botones fisicos por WebSocket. Tambien se fuerza idioma `es-PY`, se desactiva la traduccion automatica y se evita el keyring del sistema para bloquear popups en modo kiosk. El cursor del mouse se oculta por CSS y, en Raspberry, `start.sh` intenta reforzarlo con `unclutter`.
 
 ## Arranque automatico con systemd
 
@@ -175,6 +176,7 @@ CHROMIUM_BIN=chromium       # Override manual del binario de Chromium
 CHROMIUM_USER_DATA_DIR=/tmp/omo-chromium-profile  # Perfil limpio para kiosk
 CHROMIUM_EXTRA_FLAGS=""      # Flags extra para pruebas
 EFFECTS_SCALE=0.7             # Escala visual de particulas/efectos para Raspberry
+HIDE_MOUSE=1                 # 1 intenta ocultar cursor con unclutter
 ```
 
 Ejemplo:
@@ -323,7 +325,7 @@ WebSocket bridge listening on ws://127.0.0.1:8765
 Si aparece que `gpiozero` no esta disponible, instalarlo:
 
 ```bash
-sudo apt install -y python3-gpiozero
+sudo apt install -y python3-gpiozero unclutter
 ```
 
 Probar simulacion:
@@ -341,6 +343,52 @@ Confirmar que la URL incluya:
 ```
 
 `start.sh` ya lo hace automaticamente.
+
+### El cursor del mouse se sigue viendo
+
+La app usa `cursor: none`, pero en Raspberry OS el cursor puede quedar dibujado por X11/compositor. `start.sh` intenta arrancar `unclutter` automaticamente si esta instalado. Instalarlo con:
+
+```bash
+sudo apt update
+sudo apt install -y unclutter
+```
+
+Luego reiniciar el servicio:
+
+```bash
+systemctl --user restart game-omo-paraguay-albiroja.service
+```
+
+Para desactivar este comportamiento durante debug:
+
+```bash
+HIDE_MOUSE=0 ./start.sh
+```
+
+### Aparece popup de Unlock Keyring
+
+`start.sh` abre Chromium con:
+
+```text
+--password-store=basic
+--use-mock-keychain
+```
+
+Esto evita que Chromium intente usar el `Default Keyring` del escritorio y pida password en modo kiosk. Despues de actualizar, reiniciar el servicio:
+
+```bash
+systemctl --user restart game-omo-paraguay-albiroja.service
+```
+
+Si el popup persiste por estado viejo del perfil Chromium, limpiar el perfil temporal:
+
+```bash
+systemctl --user stop game-omo-paraguay-albiroja.service
+rm -rf /tmp/omo-chromium-profile
+systemctl --user start game-omo-paraguay-albiroja.service
+```
+
+Como ultimo recurso de sistema, abrir `Passwords and Keys` / `seahorse` en Raspberry OS y poner el `Default Keyring` con password vacio, o eliminarlo y recrearlo vacio. Para kiosk offline/local esto suele ser aceptable, pero el flag de Chromium deberia evitarlo sin tocar el keyring del usuario.
 
 ### Aparece popup de traducir pagina
 

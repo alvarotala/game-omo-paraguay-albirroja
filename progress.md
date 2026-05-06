@@ -251,3 +251,13 @@ Update 2026-05-05 kiosk translate popup hardening:
 Update 2026-05-05 kiosk cursor:
 - `styles.css` ahora usa `cursor: none` global y en el canvas para ocultar el mouse durante el kiosk.
 - README actualizado indicando que el cursor se oculta desde la app.
+
+Update 2026-05-05 kiosk keyring popup:
+- `start.sh` ahora abre Chromium con `--password-store=basic` y `--use-mock-keychain` para evitar el popup `Unlock Keyring`.
+- README actualizado con troubleshooting para reiniciar servicio, limpiar `/tmp/omo-chromium-profile` y opcion de keyring vacio como ultimo recurso.
+
+Update 2026-05-05 kiosk cursor hardening:
+- CSS ahora usa `cursor: none !important`.
+- `start.sh` agrega `HIDE_MOUSE=1` y arranca `unclutter -idle 0.1 -root` si esta instalado, cerrandolo en cleanup.
+- Servicio systemd exporta `HIDE_MOUSE=1`.
+- README actualizado con instalacion de `unclutter` y troubleshooting del cursor.
