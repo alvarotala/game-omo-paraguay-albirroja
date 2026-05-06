@@ -23,6 +23,7 @@
 
 * {
   box-sizing: border-box;
+  cursor: none;
 }
 
 html,
@@ -67,4 +68,5 @@ body {
   background: #0e2f54;
   touch-action: none;
   user-select: none;
+  cursor: none;
 }

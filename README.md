@@ -44,7 +44,7 @@ Esto hace tres cosas:
 2. Levanta el bridge WebSocket en `ws://127.0.0.1:8765`.
 3. Abre Chromium en kiosk/fullscreen apuntando al juego con el bridge conectado.
 
-Chromium se abre con `--autoplay-policy=no-user-gesture-required` para que el audio funcione tambien cuando el input inicial viene desde los botones fisicos por WebSocket. Tambien se fuerza idioma `es-PY` y se desactiva la traduccion automatica para evitar popups en modo kiosk.
+Chromium se abre con `--autoplay-policy=no-user-gesture-required` para que el audio funcione tambien cuando el input inicial viene desde los botones fisicos por WebSocket. Tambien se fuerza idioma `es-PY` y se desactiva la traduccion automatica para evitar popups en modo kiosk. El cursor del mouse se oculta por CSS en toda la app.
 
 ## Arranque automatico con systemd
 

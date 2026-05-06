@@ -247,3 +247,7 @@ Update 2026-05-05 kiosk translate popup hardening:
 - `start.sh` ahora preconfigura `Default/Preferences` y `Local State` del perfil Chromium con `translate.enabled=false`, idioma español y notificaciones bloqueadas.
 - Flags de Chromium actualizados a `Translate,TranslateUI,TranslateSubFrames`, `--lang=es-419` y accept-languages español.
 - Agregado `omo-kiosk-chromium-policy.json` con `TranslateEnabled=false` para instalar como policy administrada si el popup Spanish/English persiste.
+
+Update 2026-05-05 kiosk cursor:
+- `styles.css` ahora usa `cursor: none` global y en el canvas para ocultar el mouse durante el kiosk.
+- README actualizado indicando que el cursor se oculta desde la app.
