@@ -44,7 +44,89 @@ Esto hace tres cosas:
 2. Levanta el bridge WebSocket en `ws://127.0.0.1:8765`.
 3. Abre Chromium en kiosk/fullscreen apuntando al juego con el bridge conectado.
 
-Chromium se abre con `--autoplay-policy=no-user-gesture-required` para que el audio funcione tambien cuando el input inicial viene desde los botones fisicos por WebSocket.
+Chromium se abre con `--autoplay-policy=no-user-gesture-required` para que el audio funcione tambien cuando el input inicial viene desde los botones fisicos por WebSocket. Tambien se fuerza idioma `es-PY` y se desactiva la traduccion automatica para evitar popups en modo kiosk.
+
+## Arranque automatico con systemd
+
+El repo incluye `game-omo-paraguay-albiroja.service` para levantar el juego automaticamente al iniciar la Raspberry. Esta configurado como servicio de usuario porque Chromium necesita correr dentro de la sesion grafica del usuario que esta logueado.
+
+Supuestos del archivo incluido:
+
+- Usuario de Raspberry: `admin`.
+- Carpeta del proyecto: `/home/admin/game-omo-paraguay-albirroja`.
+- Raspberry OS con autologin grafico habilitado para ese usuario.
+- Performance del juego: `EFFECTS_SCALE=0.55`.
+
+Si la carpeta final cambia, editar `WorkingDirectory` y `ExecStart` dentro del `.service` antes de instalarlo.
+
+### Instalar el servicio
+
+Desde la carpeta del proyecto en la Raspberry:
+
+```bash
+chmod +x start.sh gpio_ws_bridge.py kiosk_http_server.py test.py
+mkdir -p ~/.config/systemd/user
+cp game-omo-paraguay-albiroja.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable game-omo-paraguay-albiroja.service
+systemctl --user start game-omo-paraguay-albiroja.service
+```
+
+Para que arranque al prender la Raspberry, habilitar autologin grafico desde `sudo raspi-config`:
+
+```text
+System Options -> Boot / Auto Login -> Desktop Autologin
+```
+
+No hace falta usar `loginctl enable-linger` para este kiosk. Chromium necesita una sesion grafica activa; con Desktop Autologin el servicio de usuario se levanta al entrar esa sesion.
+
+Si se instala y se inicia en una sesion ya abierta, importar el entorno grafico antes de arrancar puede ayudar:
+
+```bash
+systemctl --user import-environment DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS
+systemctl --user restart game-omo-paraguay-albiroja.service
+```
+
+### Ver estado y logs
+
+```bash
+systemctl --user status game-omo-paraguay-albiroja.service
+journalctl --user -u game-omo-paraguay-albiroja.service -f
+```
+
+### Reiniciar despues de cambios
+
+```bash
+systemctl --user restart game-omo-paraguay-albiroja.service
+```
+
+### Detener o deshabilitar
+
+```bash
+systemctl --user stop game-omo-paraguay-albiroja.service
+systemctl --user disable game-omo-paraguay-albiroja.service
+```
+
+### Ajustar variables del kiosk
+
+El `.service` deja `EFFECTS_SCALE=0.55`, que fue el valor que funciono fluido en el Pi 5. Para cambiar pines, puertos, debug o flags de Chromium, editar las lineas `Environment=` del servicio. Ejemplo:
+
+```ini
+Environment=DISPLAY=:0
+Environment=XDG_RUNTIME_DIR=/run/user/%U
+Environment=GPIO_LEFT_PIN=17
+Environment=GPIO_RIGHT_PIN=27
+Environment=EFFECTS_SCALE=0.55
+Environment=CHROMIUM_EXTRA_FLAGS=--enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist
+```
+
+Luego aplicar:
+
+```bash
+cp game-omo-paraguay-albiroja.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user restart game-omo-paraguay-albiroja.service
+```
 
 ## GPIO
 
@@ -259,6 +341,33 @@ Confirmar que la URL incluya:
 ```
 
 `start.sh` ya lo hace automaticamente.
+
+### Aparece popup de traducir pagina
+
+`start.sh` ya incluye estos flags para bloquear traduccion y primeros dialogos de Chromium:
+
+```text
+--no-first-run
+--no-default-browser-check
+--disable-translate
+--disable-features=Translate,TranslateUI
+--lang=es-PY
+--accept-lang=es-PY,es,en-US,en
+```
+
+Despues de actualizar `start.sh`, reiniciar el servicio:
+
+```bash
+systemctl --user restart game-omo-paraguay-albiroja.service
+```
+
+Si Chromium quedo con preferencias viejas en el perfil kiosk, limpiar el perfil y reiniciar:
+
+```bash
+systemctl --user stop game-omo-paraguay-albiroja.service
+rm -rf /tmp/omo-chromium-profile
+systemctl --user start game-omo-paraguay-albiroja.service
+```
 
 ### Audio no suena
 

@@ -230,3 +230,14 @@ Update 2026-05-05 Raspberry typography:
 - `styles.css` define `@font-face` para `OMO Display` y usa fallbacks Linux-friendly.
 - `game.js` centraliza el font canvas en `gameFont()` y reemplaza Trebuchet MS por la familia local.
 - `kiosk_http_server.py` ahora declara MIME para fuentes (`.ttf`, `.otf`, `.woff`, `.woff2`).
+
+Update 2026-05-05 systemd packaging:
+- Agregado `game-omo-paraguay-albiroja.service` como servicio systemd de usuario para Raspberry OS.
+- Servicio apunta a `%h/game-omo-paraguay-albirroja/start.sh`, reinicia automaticamente y usa `EFFECTS_SCALE=0.55`.
+- README actualizado con instalacion, enable/start, logs, restart, disable y ajuste de variables.
+- Servicio ajustado para kiosk grafico: usa `DISPLAY=:0`, `XDG_RUNTIME_DIR=/run/user/%U`, delay inicial de 8s y README prioriza Desktop Autologin sobre `loginctl enable-linger`.
+
+Update 2026-05-05 kiosk translate popup:
+- `start.sh` ahora desactiva traduccion de Chromium con `--disable-translate` y `--disable-features=Translate,TranslateUI`.
+- Agregados `--no-first-run`, `--no-default-browser-check`, `--lang=es-PY` y `--accept-lang=es-PY,es,en-US,en` para evitar popups/dialogos en kiosk.
+- README actualizado con troubleshooting para limpiar `/tmp/omo-chromium-profile` si quedaron preferencias viejas.

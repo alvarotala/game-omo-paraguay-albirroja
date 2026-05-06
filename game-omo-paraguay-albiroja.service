@@ -1,0 +1,21 @@
+[Unit]
+Description=OMO Paraguay Albirroja kiosk game
+After=graphical-session.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=%h/game-omo-paraguay-albirroja
+ExecStart=%h/game-omo-paraguay-albirroja/start.sh
+Restart=always
+RestartSec=3
+KillMode=control-group
+ExecStartPre=/bin/sleep 8
+Environment=DISPLAY=:0
+Environment=XDG_RUNTIME_DIR=/run/user/%U
+Environment=EFFECTS_SCALE=0.55
+Environment=GPIO_DEBUG=0
+Environment=GPIO_STDIN_SIM=0
+
+[Install]
+WantedBy=default.target

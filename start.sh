@@ -57,7 +57,13 @@ echo "Opening Chromium kiosk: $GAME_URL"
   --kiosk \
   --start-fullscreen \
   --noerrdialogs \
+  --no-first-run \
+  --no-default-browser-check \
   --disable-infobars \
+  --disable-translate \
+  --disable-features=Translate,TranslateUI \
+  --lang=es-PY \
+  --accept-lang=es-PY,es,en-US,en \
   --disable-session-crashed-bubble \
   --disable-background-networking \
   --disable-sync \
