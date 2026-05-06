@@ -344,16 +344,25 @@ Confirmar que la URL incluya:
 
 ### Aparece popup de traducir pagina
 
-`start.sh` ya incluye estos flags para bloquear traduccion y primeros dialogos de Chromium:
+`start.sh` bloquea esto por tres vias: marca el HTML como `notranslate`, escribe preferencias internas del perfil Chromium con `translate.enabled=false`, e incluye estos flags para bloquear traduccion y primeros dialogos de Chromium:
 
 ```text
 --no-first-run
 --no-default-browser-check
 --disable-translate
---disable-features=Translate,TranslateUI
---lang=es-PY
---accept-lang=es-PY,es,en-US,en
+--disable-features=Translate,TranslateUI,TranslateSubFrames
+--lang=es-419
+--accept-lang=es-PY,es-419,es,en-US,en
 ```
+
+Ademas, antes de abrir Chromium, `start.sh` escribe:
+
+```text
+/tmp/omo-chromium-profile/Default/Preferences
+/tmp/omo-chromium-profile/Local State
+```
+
+con traduccion deshabilitada e idioma español.
 
 Despues de actualizar `start.sh`, reiniciar el servicio:
 
@@ -368,6 +377,16 @@ systemctl --user stop game-omo-paraguay-albiroja.service
 rm -rf /tmp/omo-chromium-profile
 systemctl --user start game-omo-paraguay-albiroja.service
 ```
+
+Si aun asi Chromium insiste con el popup `Spanish / English`, instalar la policy administrada incluida en el repo. Esto fuerza la traduccion apagada a nivel sistema:
+
+```bash
+sudo mkdir -p /etc/chromium/policies/managed
+sudo cp omo-kiosk-chromium-policy.json /etc/chromium/policies/managed/omo-kiosk.json
+systemctl --user restart game-omo-paraguay-albiroja.service
+```
+
+Verificacion opcional: abrir `chrome://policy` en Chromium y revisar que aparezca `TranslateEnabled: false`.
 
 ### Audio no suena
 

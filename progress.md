@@ -241,3 +241,9 @@ Update 2026-05-05 kiosk translate popup:
 - `start.sh` ahora desactiva traduccion de Chromium con `--disable-translate` y `--disable-features=Translate,TranslateUI`.
 - Agregados `--no-first-run`, `--no-default-browser-check`, `--lang=es-PY` y `--accept-lang=es-PY,es,en-US,en` para evitar popups/dialogos en kiosk.
 - README actualizado con troubleshooting para limpiar `/tmp/omo-chromium-profile` si quedaron preferencias viejas.
+
+Update 2026-05-05 kiosk translate popup hardening:
+- `index.html` ahora usa `lang=es-PY`, `translate=no`, clase `notranslate` y meta `google=notranslate`.
+- `start.sh` ahora preconfigura `Default/Preferences` y `Local State` del perfil Chromium con `translate.enabled=false`, idioma español y notificaciones bloqueadas.
+- Flags de Chromium actualizados a `Translate,TranslateUI,TranslateSubFrames`, `--lang=es-419` y accept-languages español.
+- Agregado `omo-kiosk-chromium-policy.json` con `TranslateEnabled=false` para instalar como policy administrada si el popup Spanish/English persiste.

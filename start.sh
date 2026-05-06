@@ -42,7 +42,41 @@ GPIO_PID="$!"
 python3 kiosk_http_server.py "$HTTP_PORT" --bind 127.0.0.1 --directory "$ROOT_DIR" &
 HTTP_PID="$!"
 
-mkdir -p "$CHROMIUM_USER_DATA_DIR"
+mkdir -p "$CHROMIUM_USER_DATA_DIR/Default"
+
+python3 - "$CHROMIUM_USER_DATA_DIR" <<'CHROMIUM_PREFS_PY'
+import json
+import sys
+from pathlib import Path
+
+profile = Path(sys.argv[1])
+default = profile / "Default"
+default.mkdir(parents=True, exist_ok=True)
+
+preferences_path = default / "Preferences"
+try:
+    preferences = json.loads(preferences_path.read_text())
+except Exception:
+    preferences = {}
+
+preferences.setdefault("translate", {})["enabled"] = False
+preferences.setdefault("intl", {})["accept_languages"] = "es-PY,es-419,es,en-US,en"
+preferences.setdefault("browser", {})["enable_spellchecking"] = False
+profile_prefs = preferences.setdefault("profile", {})
+content_settings = profile_prefs.setdefault("default_content_setting_values", {})
+content_settings["notifications"] = 2
+preferences_path.write_text(json.dumps(preferences, separators=(",", ":")))
+
+local_state_path = profile / "Local State"
+try:
+    local_state = json.loads(local_state_path.read_text())
+except Exception:
+    local_state = {}
+
+local_state.setdefault("intl", {})["app_locale"] = "es-PY"
+local_state.setdefault("translate", {})["enabled"] = False
+local_state_path.write_text(json.dumps(local_state, separators=(",", ":")))
+CHROMIUM_PREFS_PY
 
 sleep 1
 
@@ -61,9 +95,9 @@ echo "Opening Chromium kiosk: $GAME_URL"
   --no-default-browser-check \
   --disable-infobars \
   --disable-translate \
-  --disable-features=Translate,TranslateUI \
-  --lang=es-PY \
-  --accept-lang=es-PY,es,en-US,en \
+  --disable-features=Translate,TranslateUI,TranslateSubFrames \
+  --lang=es-419 \
+  --accept-lang=es-PY,es-419,es,en-US,en \
   --disable-session-crashed-bubble \
   --disable-background-networking \
   --disable-sync \
