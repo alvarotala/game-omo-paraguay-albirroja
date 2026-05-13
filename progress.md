@@ -316,6 +316,11 @@ Update 2026-05-13 Arduino bridge default Windows:
 - `start-windows.ps1` ahora usa `START_ARDUINO_BRIDGE=1` por defecto tambien en arranque manual.
 - README documenta que Windows levanta Arduino bridge por defecto y que se puede desactivar con `START_ARDUINO_BRIDGE=0` para pruebas sin Arduino.
 
+Update 2026-05-13 Arduino Nano debug cleanup:
+- Removido el debug `pin_state` temporal del sketch principal y del bridge Python.
+- Eliminado el sketch temporal `arduino/nano_pin_scanner`.
+- README simplificado dejando solo troubleshooting basico y sketch minimo opcional.
+
 Update 2026-05-12 Windows autostart:
 - Agregado `start-windows-autostart.bat` con defaults editables para delay, puerto, teclas, efectos y kiosk.
 - Agregado `install-windows-autostart.ps1` / `.bat` para registrar una tarea programada `OMO Paraguay Albirroja Kiosk` al iniciar sesion del usuario actual.

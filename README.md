@@ -364,6 +364,41 @@ set "ARDUINO_DEBUG=1"
 
 El juego recibe press/release por WebSocket, asi que tambien funciona la regla de penalizacion por apretar los dos botones a la vez.
 
+### Troubleshooting Arduino Nano
+
+Si solo aparece:
+
+```json
+{"type":"ready","source":"arduino","name":"omo-nano-buttons"}
+```
+
+pero no aparecen eventos al tocar `D4` o `D5` con `GND`, revisar:
+
+- Que el sketch cargado sea `arduino/nano_button_serial/nano_button_serial.ino`.
+- Que el Serial Monitor este en `115200 baud`.
+- Que estes usando los pines digitales rotulados `D4` y `D5`, no las patas fisicas 4/5 del chip.
+- Que cada boton cierre contra un pin `GND` del mismo Nano.
+- Que no se este uniendo `D4` con `D5` entre si.
+- Mantener el puente a `GND` al menos 0.1 segundos; el debounce filtra toques demasiado rapidos.
+
+Para diagnostico electrico puntual, probar un sketch minimo en Arduino IDE:
+
+```cpp
+void setup() {
+  pinMode(4, INPUT_PULLUP);
+  pinMode(5, INPUT_PULLUP);
+  Serial.begin(115200);
+}
+
+void loop() {
+  Serial.print("D4=");
+  Serial.print(digitalRead(4));
+  Serial.print(" D5=");
+  Serial.println(digitalRead(5));
+  delay(250);
+}
+```
+
 ## Arranque automatico en Windows
 
 El repo incluye scripts para instalar una tarea programada de Windows que abre el juego al iniciar sesion del usuario actual. Esto es equivalente al servicio de usuario en Raspberry: Chrome necesita una sesion grafica abierta, por eso la tarea se dispara en login, no como servicio de sistema antes de login.

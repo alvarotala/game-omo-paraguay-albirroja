@@ -30,6 +30,10 @@ struct ButtonState {
 ButtonState leftButton = {"left", LEFT_BUTTON_PIN, HIGH, HIGH, 0};
 ButtonState rightButton = {"right", RIGHT_BUTTON_PIN, HIGH, HIGH, 0};
 
+bool isPressed(int reading) {
+  return reading == LOW;
+}
+
 void sendButtonEvent(const char* side, bool pressed) {
   Serial.print("{\"type\":\"button\",\"side\":\"");
   Serial.print(side);
@@ -58,7 +62,14 @@ void updateButton(ButtonState& button) {
   }
 
   button.stableState = reading;
-  sendButtonEvent(button.side, reading == LOW);
+  sendButtonEvent(button.side, isPressed(reading));
+}
+
+void initButton(ButtonState& button) {
+  const int reading = digitalRead(button.pin);
+  button.stableState = reading;
+  button.lastReading = reading;
+  button.lastChangeAt = millis();
 }
 
 void setup() {
@@ -72,6 +83,8 @@ void setup() {
   }
 
   Serial.println("{\"type\":\"ready\",\"source\":\"arduino\",\"name\":\"omo-nano-buttons\"}");
+  initButton(leftButton);
+  initButton(rightButton);
 }
 
 void loop() {
