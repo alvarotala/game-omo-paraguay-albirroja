@@ -12,6 +12,8 @@ El jugador protege una camiseta de Paraguay de suciedad, pasto, barro y manchas 
 - `assets/`: imagenes y audio.
 - `assets/audio/README.md`: fuentes/licencias de audio.
 - `gpio_ws_bridge.py`: bridge local GPIO -> WebSocket.
+- `arduino/nano_button_serial/nano_button_serial.ino`: sketch para Arduino Nano clasico, envia botones por Serial.
+- `arduino_serial_ws_bridge.py`: bridge Windows/macOS/Linux Serial Arduino -> WebSocket.
 - `start.sh`: script de arranque para Raspberry OS.
 - `start-windows.ps1`: launcher Windows para Chrome.
 - `start-windows.bat`: wrapper para ejecutar el launcher Windows con doble click.
@@ -227,12 +229,13 @@ powershell -ExecutionPolicy Bypass -File .\start-windows.ps1
 El launcher de Windows:
 
 1. Levanta el servidor local en `http://127.0.0.1:8000/` usando `kiosk_http_server.py`.
-2. Abre Google Chrome en kiosk/fullscreen con un perfil limpio en `%TEMP%\omo-chrome-profile`.
-3. Pasa al juego las teclas configuradas para boton izquierdo/derecho.
-4. Agrega flags para autoplay de audio, idioma `es-PY` y traduccion deshabilitada.
-5. Cierra el servidor local automaticamente cuando se cierra Chrome.
+2. Si `START_ARDUINO_BRIDGE=1`, levanta `arduino_serial_ws_bridge.py` y conecta el juego por WebSocket.
+3. Abre Google Chrome en kiosk/fullscreen con un perfil limpio en `%TEMP%\omo-chrome-profile`.
+4. Pasa al juego las teclas configuradas para boton izquierdo/derecho como fallback de teclado.
+5. Agrega flags para autoplay de audio, idioma `es-PY` y traduccion deshabilitada.
+6. Cierra los procesos locales automaticamente cuando se cierra Chrome.
 
-En Windows no se ejecuta `gpio_ws_bridge.py`. El input fisico debe llegar como eventos de teclado desde el encoder/teclado modificado.
+En Windows no se ejecuta `gpio_ws_bridge.py`. Para Arduino Nano clasico se usa `arduino_serial_ws_bridge.py`, porque el Nano lee botones por Serial y Python los reexpone por WebSocket. El teclado sigue funcionando como fallback.
 
 El launcher espera a que el servidor local responda antes de abrir Chrome. Si el servidor no queda disponible, no abre Chrome y muestra los logs generados en `logs/windows-http-*.log`.
 
@@ -255,6 +258,9 @@ set "LEFT_BUTTON_KEY=z"
 set "RIGHT_BUTTON_KEY=x"
 set "EFFECTS_SCALE=1.2"
 set "KIOSK=1"
+set "START_ARDUINO_BRIDGE=1"
+set "ARDUINO_SERIAL_PORT=COM3"
+set "ARDUINO_SERIAL_BAUD=115200"
 set "CHROME_EXTRA_FLAGS=--disable-gpu-vsync"
 start-windows.bat
 ```
@@ -282,6 +288,74 @@ set "RIGHT_BUTTON_KEY=KeyX"
 start-windows.bat
 ```
 
+## Arduino Nano como botones
+
+El Arduino Nano clasico no puede emular teclado USB con `Keyboard.h`, pero si sirve perfecto como lector de botones por Serial. El flujo queda:
+
+```text
+Botones -> Arduino Nano -> USB Serial -> arduino_serial_ws_bridge.py -> WebSocket -> juego
+```
+
+### Cargar sketch
+
+Abrir en Arduino IDE:
+
+```text
+arduino/nano_button_serial/nano_button_serial.ino
+```
+
+Seleccionar:
+
+- Board: `Arduino Nano`.
+- Processor: `ATmega328P`; si no sube, probar `ATmega328P (Old Bootloader)`.
+- Port: el puerto del Nano.
+
+Cableado con el sketch incluido:
+
+- Boton izquierdo: pin `D4` a `GND`.
+- Boton derecho: pin `D5` a `GND`.
+- Usa `INPUT_PULLUP`, no hace falta resistencia externa.
+
+El sketch envia eventos como:
+
+```json
+{"type":"button","side":"left","pressed":true,"source":"arduino","ms":1234}
+{"type":"button","side":"left","pressed":false,"source":"arduino","ms":1300}
+```
+
+### Instalar dependencia Python
+
+En Windows:
+
+```bat
+py -m pip install pyserial
+```
+
+### Probar bridge Arduino
+
+Con el Nano conectado:
+
+```bat
+set "START_ARDUINO_BRIDGE=1"
+set "ARDUINO_SERIAL_PORT=COM3"
+start-windows.bat
+```
+
+Si no se define `ARDUINO_SERIAL_PORT`, el bridge intenta detectar automaticamente un puerto tipo Arduino/CH340/USB Serial.
+
+Variables del bridge Arduino:
+
+```bat
+set "START_ARDUINO_BRIDGE=1"
+set "ARDUINO_SERIAL_PORT=COM3"
+set "ARDUINO_SERIAL_BAUD=115200"
+set "ARDUINO_WS_HOST=127.0.0.1"
+set "ARDUINO_WS_PORT=8765"
+set "ARDUINO_DEBUG=1"
+```
+
+El juego recibe press/release por WebSocket, asi que tambien funciona la regla de penalizacion por apretar los dos botones a la vez.
+
 ## Arranque automatico en Windows
 
 El repo incluye scripts para instalar una tarea programada de Windows que abre el juego al iniciar sesion del usuario actual. Esto es equivalente al servicio de usuario en Raspberry: Chrome necesita una sesion grafica abierta, por eso la tarea se dispara en login, no como servicio de sistema antes de login.
@@ -295,6 +369,9 @@ set "LEFT_BUTTON_KEY=z"
 set "RIGHT_BUTTON_KEY=x"
 set "EFFECTS_SCALE=1.2"
 set "KIOSK=1"
+set "START_ARDUINO_BRIDGE=1"
+set "ARDUINO_SERIAL_PORT=COM3"
+set "ARDUINO_SERIAL_BAUD=115200"
 ```
 
 Instalar la tarea programada:

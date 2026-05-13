@@ -468,18 +468,18 @@ function createInputBridge() {
     reconnectDelay = Math.min(5000, reconnectDelay * 1.6);
   }
 
-  function normalizeSide(message) {
+  function normalizeBridgeEvent(message) {
     if (typeof message === "string") {
       const raw = message.trim().toLowerCase();
       if (raw === "left" || raw === "l" || raw === "izquierda") {
-        return "left";
+        return { side: "left", pressed: null };
       }
       if (raw === "right" || raw === "r" || raw === "derecha") {
-        return "right";
+        return { side: "right", pressed: null };
       }
 
       try {
-        return normalizeSide(JSON.parse(raw));
+        return normalizeBridgeEvent(JSON.parse(raw));
       } catch {
         return null;
       }
@@ -490,18 +490,50 @@ function createInputBridge() {
     }
 
     const rawSide = String(message.side || message.button || message.key || "").toLowerCase();
+    let side = null;
     if (rawSide === "left" || rawSide === "l" || rawSide === "izquierda") {
-      return "left";
+      side = "left";
+    } else if (rawSide === "right" || rawSide === "r" || rawSide === "derecha") {
+      side = "right";
     }
-    if (rawSide === "right" || rawSide === "r" || rawSide === "derecha") {
-      return "right";
+
+    if (!side) {
+      return null;
     }
-    return null;
+
+    let pressed = null;
+    if ("pressed" in message) {
+      pressed = normalizeBridgePressed(message.pressed, null);
+    } else if ("down" in message) {
+      pressed = normalizeBridgePressed(message.down, null);
+    } else if ("state" in message || "action" in message) {
+      pressed = normalizeBridgePressed(message.state || message.action, null);
+    }
+
+    return { side, pressed };
+  }
+
+  function normalizeBridgePressed(value, fallback = null) {
+    if (typeof value === "boolean") {
+      return value;
+    }
+    if (typeof value === "number") {
+      return value !== 0;
+    }
+
+    const raw = String(value ?? "").trim().toLowerCase();
+    if (["down", "press", "pressed", "1", "true", "on"].includes(raw)) {
+      return true;
+    }
+    if (["up", "release", "released", "0", "false", "off"].includes(raw)) {
+      return false;
+    }
+    return fallback;
   }
 
   function handleMessage(event) {
-    const side = normalizeSide(event.data);
-    if (!side) {
+    const bridgeEvent = normalizeBridgeEvent(event.data);
+    if (!bridgeEvent) {
       if (GAME_CONFIG.debugInput) {
         console.warn("OMO input bridge ignored message", event.data);
       }
@@ -509,11 +541,17 @@ function createInputBridge() {
     }
 
     if (GAME_CONFIG.debugInput) {
-      console.info("OMO input bridge button", side, event.data);
+      console.info("OMO input bridge button", bridgeEvent.side, bridgeEvent.pressed, event.data);
     }
-    state.inputBridge.lastSide = side;
+    state.inputBridge.lastSide = bridgeEvent.side;
     state.inputBridge.lastEventAt = state.time;
-    handleAction(side);
+    if (bridgeEvent.pressed === false) {
+      handleButtonUp(bridgeEvent.side);
+    } else if (bridgeEvent.pressed === true) {
+      handleButtonDown(bridgeEvent.side);
+    } else {
+      handleAction(bridgeEvent.side);
+    }
   }
 
   function connect() {

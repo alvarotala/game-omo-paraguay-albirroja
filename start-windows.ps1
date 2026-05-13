@@ -95,6 +95,45 @@ function Wait-HttpServer {
   throw "Chrome no se abrira porque el servidor local no esta listo."
 }
 
+function Wait-TcpPort {
+  param(
+    [Parameter(Mandatory = $true)][string]$HostName,
+    [Parameter(Mandatory = $true)][int]$Port,
+    [Parameter(Mandatory = $true)]$Process,
+    [Parameter(Mandatory = $true)][string]$StdoutLog,
+    [Parameter(Mandatory = $true)][string]$StderrLog,
+    [int]$TimeoutSeconds = 12
+  )
+
+  $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+  while ([DateTime]::UtcNow -lt $deadline) {
+    if ($Process.HasExited) {
+      Write-Host "El bridge Arduino termino antes de responder."
+      Write-LogTail $StdoutLog
+      Write-LogTail $StderrLog
+      throw "No se pudo iniciar el bridge Arduino. Revisa los logs anteriores."
+    }
+
+    $client = New-Object System.Net.Sockets.TcpClient
+    try {
+      $asyncResult = $client.BeginConnect($HostName, $Port, $null, $null)
+      if ($asyncResult.AsyncWaitHandle.WaitOne(250)) {
+        $client.EndConnect($asyncResult)
+        return
+      }
+    } catch {
+      Start-Sleep -Milliseconds 250
+    } finally {
+      $client.Close()
+    }
+  }
+
+  Write-Host "El bridge Arduino no respondio en $TimeoutSeconds segundos."
+  Write-LogTail $StdoutLog
+  Write-LogTail $StderrLog
+  throw "Chrome no se abrira porque el bridge Arduino no esta listo."
+}
+
 function Find-Python {
   $configured = Get-EnvValue "PYTHON_BIN"
   if ($configured) {
@@ -208,6 +247,11 @@ $ChromeExtraFlags = Get-EnvValue "CHROME_EXTRA_FLAGS"
 $KioskEnabled = (-not $NoKiosk.IsPresent) -and (Test-Enabled (Get-EnvValue "KIOSK" "1"))
 $LeftButtonKey = Get-EnvValue "LEFT_BUTTON_KEY" (Get-EnvValue "WINDOWS_LEFT_KEY" "z")
 $RightButtonKey = Get-EnvValue "RIGHT_BUTTON_KEY" (Get-EnvValue "WINDOWS_RIGHT_KEY" "x")
+$StartArduinoBridge = Test-Enabled (Get-EnvValue "START_ARDUINO_BRIDGE" "0")
+$ArduinoWsHost = Get-EnvValue "ARDUINO_WS_HOST" "127.0.0.1"
+$ArduinoWsPort = [int](Get-EnvValue "ARDUINO_WS_PORT" "8765")
+$ArduinoSerialPort = Get-EnvValue "ARDUINO_SERIAL_PORT"
+$ArduinoSerialBaud = Get-EnvValue "ARDUINO_SERIAL_BAUD" "115200"
 
 $python = Find-Python
 $chrome = Find-Chrome
@@ -219,6 +263,8 @@ New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 $Timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $ServerStdoutLog = Join-Path $LogDir "windows-http-$Timestamp.out.log"
 $ServerStderrLog = Join-Path $LogDir "windows-http-$Timestamp.err.log"
+$ArduinoStdoutLog = Join-Path $LogDir "windows-arduino-$Timestamp.out.log"
+$ArduinoStderrLog = Join-Path $LogDir "windows-arduino-$Timestamp.err.log"
 
 try {
   $serverArgs = @()
@@ -245,6 +291,45 @@ try {
     -StderrLog $ServerStderrLog
 
   $queryParts = @("effects=$EffectsScale")
+  if ($StartArduinoBridge) {
+    [Environment]::SetEnvironmentVariable("ARDUINO_WS_HOST", $ArduinoWsHost, "Process")
+    [Environment]::SetEnvironmentVariable("ARDUINO_WS_PORT", "$ArduinoWsPort", "Process")
+    [Environment]::SetEnvironmentVariable("ARDUINO_SERIAL_BAUD", $ArduinoSerialBaud, "Process")
+    if ($ArduinoSerialPort) {
+      [Environment]::SetEnvironmentVariable("ARDUINO_SERIAL_PORT", $ArduinoSerialPort, "Process")
+    }
+
+    $arduinoArgs = @()
+    $arduinoArgs += $python.PrefixArgs
+    $arduinoArgs += @("arduino_serial_ws_bridge.py")
+    $arduinoProcess = Start-Process `
+      -FilePath $python.File `
+      -ArgumentList (Join-Args $arduinoArgs) `
+      -WorkingDirectory $RootDir `
+      -WindowStyle Minimized `
+      -RedirectStandardOutput $ArduinoStdoutLog `
+      -RedirectStandardError $ArduinoStderrLog `
+      -PassThru
+    $processes += $arduinoProcess
+
+    Write-Host "Starting Arduino bridge: ws://$ArduinoWsHost`:$ArduinoWsPort"
+    if ($ArduinoSerialPort) {
+      Write-Host "Arduino serial port: $ArduinoSerialPort"
+    } else {
+      Write-Host "Arduino serial port: auto-detect"
+    }
+    Write-Host "Arduino logs: $ArduinoStdoutLog"
+    Write-Host "Arduino errors: $ArduinoStderrLog"
+    Wait-TcpPort `
+      -HostName $ArduinoWsHost `
+      -Port $ArduinoWsPort `
+      -Process $arduinoProcess `
+      -StdoutLog $ArduinoStdoutLog `
+      -StderrLog $ArduinoStderrLog
+
+    $bridgeUrl = "ws://$ArduinoWsHost`:$ArduinoWsPort"
+    $queryParts += "bridge=$([System.Uri]::EscapeDataString($bridgeUrl))"
+  }
   if ($LeftButtonKey) {
     $queryParts += "leftKey=$([System.Uri]::EscapeDataString($LeftButtonKey))"
   }
@@ -286,6 +371,9 @@ try {
   $chromeArgs += $gameUrl
 
   Write-Host "HTTP server ready: $serverUrl"
+  if ($StartArduinoBridge) {
+    Write-Host "Arduino bridge ready: ws://$ArduinoWsHost`:$ArduinoWsPort"
+  }
   Write-Host "Keyboard buttons: left=$LeftButtonKey, right=$RightButtonKey"
   Write-Host "Effects scale: $EffectsScale"
   Write-Host "Opening Chrome: $gameUrl"

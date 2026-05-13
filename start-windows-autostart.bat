@@ -12,6 +12,8 @@ if not defined LEFT_BUTTON_KEY set "LEFT_BUTTON_KEY=z"
 if not defined RIGHT_BUTTON_KEY set "RIGHT_BUTTON_KEY=x"
 if not defined EFFECTS_SCALE set "EFFECTS_SCALE=1.2"
 if not defined KIOSK set "KIOSK=1"
+if not defined START_ARDUINO_BRIDGE set "START_ARDUINO_BRIDGE=1"
+if not defined ARDUINO_SERIAL_BAUD set "ARDUINO_SERIAL_BAUD=115200"
 
 if not "%STARTUP_DELAY_SECONDS%"=="0" (
   timeout /t %STARTUP_DELAY_SECONDS% /nobreak >nul

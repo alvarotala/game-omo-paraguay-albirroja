@@ -304,6 +304,14 @@ Update 2026-05-12 double button penalty:
 - Fuera de gameplay, presionar ambos botones a la vez queda bloqueado sin avanzar pantallas extra.
 - El mensaje `UN BOTON A LA VEZ` ahora se agrega como feedback flotante grande con contorno, no solo como `flashMessage`.
 
+Update 2026-05-13 Arduino Nano serial bridge:
+- Agregado sketch `arduino/nano_button_serial/nano_button_serial.ino` para Arduino Nano clasico: D4 izquierda, D5 derecha, `INPUT_PULLUP`, JSON por Serial a 115200.
+- Agregado `arduino_serial_ws_bridge.py`, bridge Serial Arduino -> WebSocket, con autodeteccion de puertos Arduino/CH340/USB Serial y soporte `pyserial`.
+- `game.js` ahora entiende eventos WebSocket con `pressed:true/false`; `pressed:true` pasa por `handleButtonDown`, `pressed:false` por `handleButtonUp`, y los mensajes legacy sin `pressed` siguen usando `handleAction`.
+- `start-windows.ps1` puede iniciar el bridge con `START_ARDUINO_BRIDGE=1`, lo espera por TCP, escribe logs `logs/windows-arduino-*.log` y agrega `?bridge=ws://...` al juego.
+- `start-windows-autostart.bat` deja `START_ARDUINO_BRIDGE=1` por defecto para la instalacion final con Nano.
+- README actualizado con carga del sketch, cableado, `py -m pip install pyserial`, variables `ARDUINO_SERIAL_PORT/BAUD/WS_*` y flujo de prueba.
+
 Update 2026-05-12 Windows autostart:
 - Agregado `start-windows-autostart.bat` con defaults editables para delay, puerto, teclas, efectos y kiosk.
 - Agregado `install-windows-autostart.ps1` / `.bat` para registrar una tarea programada `OMO Paraguay Albirroja Kiosk` al iniciar sesion del usuario actual.
