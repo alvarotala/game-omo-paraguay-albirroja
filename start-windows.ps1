@@ -202,7 +202,7 @@ function Write-ChromePreferences {
 
 $HttpPort = [int](Get-EnvValue "HTTP_PORT" "8000")
 $HttpBind = Get-EnvValue "HTTP_BIND" "127.0.0.1"
-$EffectsScale = Get-EnvValue "EFFECTS_SCALE" "1"
+$EffectsScale = Get-EnvValue "EFFECTS_SCALE" "1.2"
 $ChromeUserDataDir = Get-EnvValue "CHROME_USER_DATA_DIR" (Join-Path $env:TEMP "omo-chrome-profile")
 $ChromeExtraFlags = Get-EnvValue "CHROME_EXTRA_FLAGS"
 $KioskEnabled = (-not $NoKiosk.IsPresent) -and (Test-Enabled (Get-EnvValue "KIOSK" "1"))

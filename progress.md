@@ -291,3 +291,10 @@ Update 2026-05-12 Windows autostart:
 - Agregado `install-windows-autostart.ps1` / `.bat` para registrar una tarea programada `OMO Paraguay Albirroja Kiosk` al iniciar sesion del usuario actual.
 - Agregado `uninstall-windows-autostart.ps1` / `.bat` para eliminar la tarea.
 - README actualizado con instalacion, prueba inmediata, `schtasks` para estado/run/end, desinstalacion y nota de autologin de Windows.
+
+Update 2026-05-12 Windows full graphics:
+- Windows ahora usa `EFFECTS_SCALE=1.2` por defecto en `start-windows.ps1` y `start-windows-autostart.bat`.
+- README actualizado para documentar que Windows corre con graficas completas por defecto.
+
+Update 2026-05-12 Windows autostart compatibility:
+- `install-windows-autostart.ps1` cambio `-RunLevel LeastPrivilege` por `-RunLevel Limited`, que es el enum valido en Windows PowerShell para tarea programada sin elevacion.

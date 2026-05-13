@@ -27,7 +27,7 @@ $trigger = New-ScheduledTaskTrigger -AtLogOn -User $currentUser
 $principal = New-ScheduledTaskPrincipal `
   -UserId $currentUser `
   -LogonType Interactive `
-  -RunLevel LeastPrivilege
+  -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet `
   -StartWhenAvailable `
   -MultipleInstances IgnoreNew `

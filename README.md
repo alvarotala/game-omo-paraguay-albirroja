@@ -236,6 +236,8 @@ En Windows no se ejecuta `gpio_ws_bridge.py`. El input fisico debe llegar como e
 
 El launcher espera a que el servidor local responda antes de abrir Chrome. Si el servidor no queda disponible, no abre Chrome y muestra los logs generados en `logs/windows-http-*.log`.
 
+Windows usa `EFFECTS_SCALE=1.2` por defecto para correr con graficas completas: mas particulas, burbujas y efectos visuales que el preset normal.
+
 Para salir del kiosk en Windows, usar `Alt+F4`. Durante pruebas puede ser mas comodo abrir sin kiosk:
 
 ```bat
@@ -251,7 +253,7 @@ set "CHROME_BIN=C:\Program Files\Google\Chrome\Application\chrome.exe"
 set "CHROME_USER_DATA_DIR=%TEMP%\omo-chrome-profile"
 set "LEFT_BUTTON_KEY=z"
 set "RIGHT_BUTTON_KEY=x"
-set "EFFECTS_SCALE=1"
+set "EFFECTS_SCALE=1.2"
 set "KIOSK=1"
 set "CHROME_EXTRA_FLAGS=--disable-gpu-vsync"
 start-windows.bat
@@ -291,7 +293,7 @@ set "STARTUP_DELAY_SECONDS=10"
 set "HTTP_PORT=8000"
 set "LEFT_BUTTON_KEY=z"
 set "RIGHT_BUTTON_KEY=x"
-set "EFFECTS_SCALE=1"
+set "EFFECTS_SCALE=1.2"
 set "KIOSK=1"
 ```
 
@@ -504,7 +506,7 @@ El launcher debe mostrar algo como:
 ```text
 Starting HTTP server: http://127.0.0.1:8000/
 HTTP server ready: http://127.0.0.1:8000/
-Opening Chrome: http://127.0.0.1:8000/?effects=1&leftKey=z&rightKey=x
+Opening Chrome: http://127.0.0.1:8000/?effects=1.2&leftKey=z&rightKey=x
 ```
 
 Si no llega a `HTTP server ready`, revisar el error que imprime la consola y los archivos `logs/windows-http-*.err.log`. Causas comunes:
