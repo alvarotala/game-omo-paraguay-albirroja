@@ -340,3 +340,10 @@ Update 2026-05-12 Windows full graphics:
 
 Update 2026-05-12 Windows autostart compatibility:
 - `install-windows-autostart.ps1` cambio `-RunLevel LeastPrivilege` por `-RunLevel Limited`, que es el enum valido en Windows PowerShell para tarea programada sin elevacion.
+
+Update 2026-05-13 Raspberry GPIO active-low latency:
+- Raspberry/GPIO ahora usa active LOW por defecto: `GPIO_PULL_UP=1`, boton entre GPIO BCM y `GND`.
+- `gpio_ws_bridge.py` usa `DigitalInputDevice.value` como estado logico presionado, para que funcione tanto pull-up/LOW como pull-down/HIGH.
+- Latencia reducida: `GPIO_DEBOUNCE=0.03` y `GPIO_POLL_SECONDS=0.005` por defecto.
+- `start.sh` exporta `GPIO_POLL_SECONDS` y muestra el nivel esperado segun `GPIO_PULL_UP`.
+- README actualizado con el nuevo cableado recomendado y la opcion de compatibilidad `GPIO_PULL_UP=0` para cableado active HIGH.

@@ -14,8 +14,9 @@ HOST = os.environ.get("GPIO_WS_HOST", "127.0.0.1")
 PORT = int(os.environ.get("GPIO_WS_PORT", "8765"))
 LEFT_PIN = int(os.environ.get("GPIO_LEFT_PIN", "17"))
 RIGHT_PIN = int(os.environ.get("GPIO_RIGHT_PIN", "27"))
-DEBOUNCE_SECONDS = float(os.environ.get("GPIO_DEBOUNCE", "0.16"))
-PULL_UP = os.environ.get("GPIO_PULL_UP", "0").lower() in {"1", "true", "yes"}
+DEBOUNCE_SECONDS = float(os.environ.get("GPIO_DEBOUNCE", "0.03"))
+POLL_SECONDS = float(os.environ.get("GPIO_POLL_SECONDS", "0.005"))
+PULL_UP = os.environ.get("GPIO_PULL_UP", "1").lower() in {"1", "true", "yes"}
 STDIN_SIM = os.environ.get("GPIO_STDIN_SIM", "0").lower() in {"1", "true", "yes"}
 GPIO_DEBUG = os.environ.get("GPIO_DEBUG", "0").lower() in {"1", "true", "yes"}
 
@@ -168,33 +169,35 @@ def setup_gpio():
     buttons["right"] = DigitalInputDevice(RIGHT_PIN, pull_up=PULL_UP)
     pull = "pull-up" if PULL_UP else "pull-down"
     active_level = "LOW" if PULL_UP else "HIGH"
-    log(f"GPIO polling ready. left=BCM{LEFT_PIN}, right=BCM{RIGHT_PIN}, {pull}, {active_level} press expected")
+    log(
+        "GPIO polling ready. "
+        f"left=BCM{LEFT_PIN}, right=BCM{RIGHT_PIN}, {pull}, "
+        f"{active_level} press expected, debounce={DEBOUNCE_SECONDS}s, poll={POLL_SECONDS}s"
+    )
     left_initial = int(buttons["left"].value)
     right_initial = int(buttons["right"].value)
-    log(f"Initial GPIO states: left={left_initial}, right={right_initial}")
+    log(f"Initial GPIO pressed states: left={left_initial}, right={right_initial}")
     return True
 
 
-def gpio_value_pressed(value):
-    return value == (0 if PULL_UP else 1)
+def gpio_pressed(device):
+    return bool(device.value)
 
 
 async def gpio_poll_loop():
     now = time.monotonic()
-    raw_pressed = {side: gpio_value_pressed(int(device.value)) for side, device in buttons.items()}
+    raw_pressed = {side: gpio_pressed(device) for side, device in buttons.items()}
     stable_pressed = dict(raw_pressed)
     changed_at = {side: now for side in buttons}
 
     while True:
         now = time.monotonic()
         for side, device in buttons.items():
-            value = int(device.value)
-            pressed = gpio_value_pressed(value)
+            pressed = gpio_pressed(device)
             if pressed != raw_pressed[side]:
                 raw_pressed[side] = pressed
                 changed_at[side] = now
-                level = "HIGH" if value else "LOW"
-                debug_log(f"GPIO {side} raw changed to {level} pressed={pressed}")
+                debug_log(f"GPIO {side} changed pressed={pressed}")
 
             if pressed == stable_pressed[side]:
                 continue
@@ -204,7 +207,7 @@ async def gpio_poll_loop():
 
             stable_pressed[side] = pressed
             emit(side, pressed, "gpio")
-        await asyncio.sleep(0.02)
+        await asyncio.sleep(POLL_SECONDS)
 
 
 async def stdin_simulator():

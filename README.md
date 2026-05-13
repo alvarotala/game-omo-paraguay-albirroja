@@ -142,16 +142,18 @@ Defaults:
 
 - Boton izquierdo: BCM `17`.
 - Boton derecho: BCM `27`.
-- Pulso esperado: HIGH al presionar.
-- Pull interno: pull-down (`GPIO_PULL_UP=0`).
-- Debounce: `0.16` segundos.
+- Pulso esperado: LOW al presionar.
+- Pull interno: pull-up (`GPIO_PULL_UP=1`).
+- Debounce: `0.03` segundos.
+- Polling: `0.005` segundos.
 
 Conexion sugerida con defaults:
 
-- Un terminal del boton a `3.3V`.
-- El otro terminal al pin GPIO BCM correspondiente.
-- Usar pull-down interno por software.
+- Un terminal del boton al pin GPIO BCM correspondiente.
+- El otro terminal del boton a `GND`.
+- Usar pull-up interno por software.
 - No enviar 5V a los GPIO.
+- No hace falta llevar `3.3V` al boton.
 
 Para cambiar pines:
 
@@ -159,10 +161,10 @@ Para cambiar pines:
 GPIO_LEFT_PIN=5 GPIO_RIGHT_PIN=6 ./start.sh
 ```
 
-Si el cableado usa pull-up y el boton lleva a GND, activar:
+Si necesitás mantener el cableado viejo con el boton llevando el GPIO a HIGH, usar:
 
 ```bash
-GPIO_PULL_UP=1 ./start.sh
+GPIO_PULL_UP=0 ./start.sh
 ```
 
 ## Variables de configuracion
@@ -175,8 +177,9 @@ GPIO_WS_HOST=127.0.0.1      # Host del WebSocket
 GPIO_WS_PORT=8765           # Puerto del WebSocket
 GPIO_LEFT_PIN=17            # Pin BCM para izquierda
 GPIO_RIGHT_PIN=27           # Pin BCM para derecha
-GPIO_DEBOUNCE=0.16          # Antirrebote en segundos
-GPIO_PULL_UP=0              # 0 pull-down, 1 pull-up
+GPIO_DEBOUNCE=0.03          # Antirrebote en segundos
+GPIO_POLL_SECONDS=0.005     # Frecuencia de lectura GPIO
+GPIO_PULL_UP=1              # 1 pull-up/GND/LOW al presionar, 0 pull-down/HIGH
 GPIO_STDIN_SIM=0            # 1 habilita simulacion por teclado en consola del bridge
 GPIO_DEBUG=0                # 1 muestra logs detallados de cada GPIO/evento
 CHROMIUM_BIN=chromium       # Override manual del binario de Chromium
@@ -379,7 +382,7 @@ pero no aparecen eventos al tocar `D4` o `D5` con `GND`, revisar:
 - Que estes usando los pines digitales rotulados `D4` y `D5`, no las patas fisicas 4/5 del chip.
 - Que cada boton cierre contra un pin `GND` del mismo Nano.
 - Que no se este uniendo `D4` con `D5` entre si.
-- Mantener el puente a `GND` al menos 0.1 segundos; el debounce filtra toques demasiado rapidos.
+- Mantener el puente a `GND` al menos 0.05 segundos; el debounce filtra toques demasiado rapidos.
 
 Para diagnostico electrico puntual, probar un sketch minimo en Arduino IDE:
 
@@ -668,7 +671,7 @@ Si Windows envia codigos fisicos en vez de caracteres, probar `KeyZ`/`KeyX`.
 En Raspberry, verificar que el bridge haya iniciado y muestre algo como:
 
 ```text
-GPIO ready. left=BCM17, right=BCM27
+GPIO polling ready. left=BCM17, right=BCM27, pull-up, LOW press expected, debounce=0.03s, poll=0.005s
 WebSocket bridge listening on ws://127.0.0.1:8765
 ```
 
