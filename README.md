@@ -241,6 +241,13 @@ El launcher espera a que el servidor local responda antes de abrir Chrome. Si el
 
 Windows usa `EFFECTS_SCALE=1.2` por defecto para correr con graficas completas: mas particulas, burbujas y efectos visuales que el preset normal.
 
+Windows tambien levanta el bridge de Arduino por defecto (`START_ARDUINO_BRIDGE=1`). Para pruebas sin Arduino conectado, desactivarlo temporalmente:
+
+```bat
+set "START_ARDUINO_BRIDGE=0"
+start-windows.bat
+```
+
 Para salir del kiosk en Windows, usar `Alt+F4`. Durante pruebas puede ser mas comodo abrir sin kiosk:
 
 ```bat
@@ -268,6 +275,7 @@ start-windows.bat
 Los defaults del launcher son:
 
 ```bat
+START_ARDUINO_BRIDGE=1
 LEFT_BUTTON_KEY=z
 RIGHT_BUTTON_KEY=x
 ```
