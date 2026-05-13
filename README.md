@@ -15,6 +15,9 @@ El jugador protege una camiseta de Paraguay de suciedad, pasto, barro y manchas 
 - `start.sh`: script de arranque para Raspberry OS.
 - `start-windows.ps1`: launcher Windows para Chrome.
 - `start-windows.bat`: wrapper para ejecutar el launcher Windows con doble click.
+- `start-windows-autostart.bat`: wrapper usado por el arranque automatico de Windows.
+- `install-windows-autostart.ps1` / `.bat`: instala la tarea programada de Windows.
+- `uninstall-windows-autostart.ps1` / `.bat`: elimina la tarea programada de Windows.
 - `kiosk_http_server.py`: servidor HTTP local para kiosk, con soporte Range para video y logs menos ruidosos.
 - `progress.md`: historial tecnico de cambios.
 
@@ -275,6 +278,65 @@ Tambien se pueden pasar codigos fisicos como `KeyZ`/`KeyX` si hiciera falta inde
 set "LEFT_BUTTON_KEY=KeyZ"
 set "RIGHT_BUTTON_KEY=KeyX"
 start-windows.bat
+```
+
+## Arranque automatico en Windows
+
+El repo incluye scripts para instalar una tarea programada de Windows que abre el juego al iniciar sesion del usuario actual. Esto es equivalente al servicio de usuario en Raspberry: Chrome necesita una sesion grafica abierta, por eso la tarea se dispara en login, no como servicio de sistema antes de login.
+
+Antes de instalar, revisar o editar `start-windows-autostart.bat` si la maquina final necesita otras teclas, puerto o delay:
+
+```bat
+set "STARTUP_DELAY_SECONDS=10"
+set "HTTP_PORT=8000"
+set "LEFT_BUTTON_KEY=z"
+set "RIGHT_BUTTON_KEY=x"
+set "EFFECTS_SCALE=1"
+set "KIOSK=1"
+```
+
+Instalar la tarea programada:
+
+```bat
+install-windows-autostart.bat
+```
+
+Instalar y arrancar inmediatamente para probar:
+
+```bat
+install-windows-autostart.bat -StartNow
+```
+
+La tarea instalada se llama:
+
+```text
+OMO Paraguay Albirroja Kiosk
+```
+
+Para que el juego se levante al prender la PC sin tocar nada, Windows debe entrar automaticamente a ese usuario. Si no hay autologin, la tarea va a correr recien despues de iniciar sesion manualmente.
+
+Ver estado desde CMD:
+
+```bat
+schtasks /Query /TN "OMO Paraguay Albirroja Kiosk" /V /FO LIST
+```
+
+Ejecutar manualmente la tarea:
+
+```bat
+schtasks /Run /TN "OMO Paraguay Albirroja Kiosk"
+```
+
+Detener la tarea:
+
+```bat
+schtasks /End /TN "OMO Paraguay Albirroja Kiosk"
+```
+
+Eliminar el arranque automatico:
+
+```bat
+uninstall-windows-autostart.bat
 ```
 
 ## Configuracion del juego

@@ -285,3 +285,9 @@ Update 2026-05-12 Windows HTTP readiness:
 Update 2026-05-12 visual input labels fixed:
 - `game.js` mantiene el mapeo funcional configurable (`leftKey/rightKey`, `leftKeys/rightKeys`) para teclados modificados.
 - Se revirtio la parte visual: inicio e instrucciones vuelven a mostrar siempre izquierda/derecha con flechas `←` y `→`, sin mostrar `x`, `z`, `KeyZ` u otras teclas configuradas.
+
+Update 2026-05-12 Windows autostart:
+- Agregado `start-windows-autostart.bat` con defaults editables para delay, puerto, teclas, efectos y kiosk.
+- Agregado `install-windows-autostart.ps1` / `.bat` para registrar una tarea programada `OMO Paraguay Albirroja Kiosk` al iniciar sesion del usuario actual.
+- Agregado `uninstall-windows-autostart.ps1` / `.bat` para eliminar la tarea.
+- README actualizado con instalacion, prueba inmediata, `schtasks` para estado/run/end, desinstalacion y nota de autologin de Windows.
