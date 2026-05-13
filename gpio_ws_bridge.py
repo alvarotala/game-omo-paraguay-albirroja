@@ -21,7 +21,6 @@ GPIO_DEBUG = os.environ.get("GPIO_DEBUG", "0").lower() in {"1", "true", "yes"}
 
 GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 clients = set()
-last_press = {"left": 0.0, "right": 0.0}
 queue = None
 buttons = {}
 
@@ -77,10 +76,11 @@ def decode_frame(data):
     return opcode, payload
 
 
-async def broadcast(side, source="gpio"):
+async def broadcast(side, pressed=True, source="gpio"):
     event = {
         "type": "button",
         "side": side,
+        "pressed": pressed,
         "source": source,
         "timestamp": time.time(),
     }
@@ -94,22 +94,18 @@ async def broadcast(side, source="gpio"):
             dead.append(writer)
     for writer in dead:
         clients.discard(writer)
-    debug_log(f"button {side} from {source} sent to {len(clients)} client(s)")
+    debug_log(f"button {side} pressed={pressed} from {source} sent to {len(clients)} client(s)")
 
 
-def emit(side, source="gpio"):
-    now = time.monotonic()
-    if now - last_press[side] < DEBOUNCE_SECONDS:
-        return
-    last_press[side] = now
+def emit(side, pressed=True, source="gpio"):
     if queue:
-        queue.put_nowait((side, source))
+        queue.put_nowait((side, pressed, source))
 
 
 async def event_pump():
     while True:
-        side, source = await queue.get()
-        await broadcast(side, source)
+        side, pressed, source = await queue.get()
+        await broadcast(side, pressed, source)
 
 
 async def handle_client(reader, writer):
@@ -171,24 +167,43 @@ def setup_gpio():
     buttons["left"] = DigitalInputDevice(LEFT_PIN, pull_up=PULL_UP)
     buttons["right"] = DigitalInputDevice(RIGHT_PIN, pull_up=PULL_UP)
     pull = "pull-up" if PULL_UP else "pull-down"
-    log(f"GPIO polling ready. left=BCM{LEFT_PIN}, right=BCM{RIGHT_PIN}, {pull}, HIGH press expected")
+    active_level = "LOW" if PULL_UP else "HIGH"
+    log(f"GPIO polling ready. left=BCM{LEFT_PIN}, right=BCM{RIGHT_PIN}, {pull}, {active_level} press expected")
     left_initial = int(buttons["left"].value)
     right_initial = int(buttons["right"].value)
     log(f"Initial GPIO states: left={left_initial}, right={right_initial}")
     return True
 
 
+def gpio_value_pressed(value):
+    return value == (0 if PULL_UP else 1)
+
+
 async def gpio_poll_loop():
-    previous = {side: int(device.value) for side, device in buttons.items()}
+    now = time.monotonic()
+    raw_pressed = {side: gpio_value_pressed(int(device.value)) for side, device in buttons.items()}
+    stable_pressed = dict(raw_pressed)
+    changed_at = {side: now for side in buttons}
+
     while True:
+        now = time.monotonic()
         for side, device in buttons.items():
             value = int(device.value)
-            if value != previous[side]:
+            pressed = gpio_value_pressed(value)
+            if pressed != raw_pressed[side]:
+                raw_pressed[side] = pressed
+                changed_at[side] = now
                 level = "HIGH" if value else "LOW"
-                debug_log(f"GPIO {side} changed to {level}")
-            if value == 1 and previous[side] == 0:
-                emit(side, "gpio")
-            previous[side] = value
+                debug_log(f"GPIO {side} raw changed to {level} pressed={pressed}")
+
+            if pressed == stable_pressed[side]:
+                continue
+
+            if now - changed_at[side] < DEBOUNCE_SECONDS:
+                continue
+
+            stable_pressed[side] = pressed
+            emit(side, pressed, "gpio")
         await asyncio.sleep(0.02)
 
 
@@ -201,9 +216,19 @@ async def stdin_simulator():
             continue
         value = line.strip().lower()
         if value in {"l", "left", "izquierda"}:
-            emit("left", "stdin")
+            emit("left", True, "stdin")
+            emit("left", False, "stdin")
         elif value in {"r", "right", "derecha"}:
-            emit("right", "stdin")
+            emit("right", True, "stdin")
+            emit("right", False, "stdin")
+        elif value in {"ld", "left down", "izquierda down"}:
+            emit("left", True, "stdin")
+        elif value in {"lu", "left up", "izquierda up"}:
+            emit("left", False, "stdin")
+        elif value in {"rd", "right down", "derecha down"}:
+            emit("right", True, "stdin")
+        elif value in {"ru", "right up", "derecha up"}:
+            emit("right", False, "stdin")
 
 
 async def main():

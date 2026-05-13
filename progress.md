@@ -321,6 +321,13 @@ Update 2026-05-13 Arduino Nano debug cleanup:
 - Eliminado el sketch temporal `arduino/nano_pin_scanner`.
 - README simplificado dejando solo troubleshooting basico y sketch minimo opcional.
 
+Update 2026-05-13 Raspberry GPIO press/release:
+- `gpio_ws_bridge.py` ahora envia eventos `{type:"button", side, pressed, source, timestamp}` en press y release, no solo press legacy.
+- Agregado debounce estable por estado para GPIO, con active HIGH si `GPIO_PULL_UP=0` y active LOW si `GPIO_PULL_UP=1`.
+- Esto permite que el juego detecte doble boton simultaneo tambien en Raspberry.
+- Simulacion stdin ahora acepta tap (`l`/`r`) y sostenido (`ld`/`lu`, `rd`/`ru`).
+- README actualizado con JSON press/release y nota de penalizacion por doble boton.
+
 Update 2026-05-12 Windows autostart:
 - Agregado `start-windows-autostart.bat` con defaults editables para delay, puerto, teclas, efectos y kiosk.
 - Agregado `install-windows-autostart.ps1` / `.bat` para registrar una tarea programada `OMO Paraguay Albirroja Kiosk` al iniciar sesion del usuario actual.

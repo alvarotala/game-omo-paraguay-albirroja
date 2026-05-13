@@ -534,7 +534,8 @@ Las fuentes/licencias estan documentadas en `assets/audio/README.md`.
 `gpio_ws_bridge.py` envia eventos JSON asi:
 
 ```json
-{"type":"button","side":"left","source":"gpio","timestamp":1777693622.04}
+{"type":"button","side":"left","pressed":true,"source":"gpio","timestamp":1777693622.04}
+{"type":"button","side":"left","pressed":false,"source":"gpio","timestamp":1777693622.20}
 ```
 
 `side` puede ser:
@@ -543,6 +544,8 @@ Las fuentes/licencias estan documentadas en `assets/audio/README.md`.
 - `right`
 
 El cliente del juego tambien acepta mensajes simples como `left`, `right`, `l`, `r`, `izquierda` o `derecha`, ademas de JSON.
+
+El campo `pressed` permite que el juego sepa si el boton sigue apretado. Esto es necesario para penalizar cuando se aprietan izquierda y derecha al mismo tiempo, y aplica tanto en Raspberry/GPIO como en Arduino/Serial.
 
 Para correr solo el bridge:
 
@@ -556,7 +559,7 @@ Para debug sin GPIO, habilitar simulacion por stdin:
 GPIO_STDIN_SIM=1 python3 gpio_ws_bridge.py
 ```
 
-Luego escribir `l` o `r` y Enter en esa consola.
+Luego escribir `l` o `r` y Enter en esa consola. Para simular boton sostenido, usar `ld`/`lu` para izquierda down/up y `rd`/`ru` para derecha down/up.
 
 ## Desarrollo local
 
