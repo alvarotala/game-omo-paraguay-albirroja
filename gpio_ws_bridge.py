@@ -221,7 +221,10 @@ async def main():
 
     stop = asyncio.Event()
     for sig in (signal.SIGINT, signal.SIGTERM):
-        asyncio.get_running_loop().add_signal_handler(sig, stop.set)
+        try:
+            asyncio.get_running_loop().add_signal_handler(sig, stop.set)
+        except NotImplementedError:
+            signal.signal(sig, lambda *_args: stop.set())
     async with server:
         await stop.wait()
     log("stopping bridge")

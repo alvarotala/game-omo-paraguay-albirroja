@@ -218,6 +218,12 @@ Update 2026-05-05 GPIO bridge debug/polling:
 - El cliente JS ahora loguea conexion, cierre/error y mensajes de botones recibidos para debug en Chromium.
 - Validaciones: compilacion sintactica de `gpio_ws_bridge.py` y `node --check game.js`.
 
+Update 2026-05-12 Windows Chrome launcher:
+- Agregado `start-windows.ps1` para levantar `kiosk_http_server.py`, abrir Google Chrome en Windows con perfil limpio, flags de kiosk/audio/idioma y cerrar el server al salir de Chrome.
+- Agregado `start-windows.bat` como wrapper para ejecutar el launcher con doble click o desde CMD.
+- `gpio_ws_bridge.py` ahora tolera Windows, donde `asyncio.add_signal_handler` no esta implementado.
+- README actualizado con requisitos, arranque rapido, variables y troubleshooting para Windows + Chrome.
+
 Update 2026-05-05 Raspberry performance pass:
 - Agregado `GAME_CONFIG.performance` y query `?effects=` para escalar particulas, burbujas y efectos pesados sin tocar codigo.
 - `start.sh` ahora usa `EFFECTS_SCALE=0.7` por defecto y lo pasa al juego; se puede bajar a `0.55` para Pi 5 si aparecen drops.
@@ -261,3 +267,21 @@ Update 2026-05-05 kiosk cursor hardening:
 - `start.sh` agrega `HIDE_MOUSE=1` y arranca `unclutter -idle 0.1 -root` si esta instalado, cerrandolo en cleanup.
 - Servicio systemd exporta `HIDE_MOUSE=1`.
 - README actualizado con instalacion de `unclutter` y troubleshooting del cursor.
+
+Update 2026-05-12 Windows keyboard input:
+- Windows ya no inicia `gpio_ws_bridge.py`; el launcher solo pasa teclas de boton por query string.
+- `start-windows.ps1` acepta `LEFT_BUTTON_KEY`/`RIGHT_BUTTON_KEY` (`z`/`x` por defecto) y arma la URL con `?leftKey=...&rightKey=...`.
+- `game.js` agrega `GAME_CONFIG.inputKeys`, overrides por `leftKey/rightKey` o `leftKeys/rightKeys`, y matching por `event.key` o `event.code`.
+- Pantallas de inicio/instrucciones muestran las etiquetas configuradas de cada boton.
+- README actualizado con configuracion Windows para teclados modificados y troubleshooting sin GPIO.
+
+Update 2026-05-12 Windows HTTP readiness:
+- `start-windows.ps1` ahora guarda stdout/stderr del servidor en `logs/windows-http-*.log`.
+- El launcher espera a que `http://127.0.0.1:<HTTP_PORT>/` responda antes de abrir Chrome.
+- Si el server termina o no responde, imprime el tail de los logs y no abre Chrome, para diagnosticar `ERR_CONNECTION_REFUSED`.
+- `.gitignore` ahora ignora `/logs`.
+- README actualizado con troubleshooting de `ERR_CONNECTION_REFUSED` en Windows.
+
+Update 2026-05-12 visual input labels fixed:
+- `game.js` mantiene el mapeo funcional configurable (`leftKey/rightKey`, `leftKeys/rightKeys`) para teclados modificados.
+- Se revirtio la parte visual: inicio e instrucciones vuelven a mostrar siempre izquierda/derecha con flechas `←` y `→`, sin mostrar `x`, `z`, `KeyZ` u otras teclas configuradas.

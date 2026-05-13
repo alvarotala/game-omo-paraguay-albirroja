@@ -18,6 +18,11 @@ const GAME_CONFIG = {
   difficulty: 1,
   attractVideoSrc: "video.mp4",
   inputBridgeUrl: "",
+  inputKeys: {
+    left: ["ArrowLeft", "a"],
+    right: ["ArrowRight", "d"],
+    fullscreen: ["f"],
+  },
   debugInput: false,
   performance: {
     effectsScale: 1,
@@ -235,6 +240,85 @@ function applyRuntimeOverrides() {
   if (audioOverride === "0" || audioOverride === "false") {
     GAME_CONFIG.audio.enabled = false;
   }
+
+  applyInputKeyOverrides(params);
+}
+
+function applyInputKeyOverrides(params) {
+  const leftList = getParamList(params, ["leftKeys", "keysLeft"]);
+  if (leftList.length) {
+    GAME_CONFIG.inputKeys.left = leftList;
+  }
+
+  const rightList = getParamList(params, ["rightKeys", "keysRight"]);
+  if (rightList.length) {
+    GAME_CONFIG.inputKeys.right = rightList;
+  }
+
+  const leftExtra = getParamList(params, ["leftKey", "keyLeft"]);
+  if (leftExtra.length) {
+    GAME_CONFIG.inputKeys.left = uniqueKeys([...GAME_CONFIG.inputKeys.left, ...leftExtra]);
+  }
+
+  const rightExtra = getParamList(params, ["rightKey", "keyRight"]);
+  if (rightExtra.length) {
+    GAME_CONFIG.inputKeys.right = uniqueKeys([...GAME_CONFIG.inputKeys.right, ...rightExtra]);
+  }
+
+  const fullscreenKeys = getParamList(params, ["fullscreenKey", "fullscreenKeys"]);
+  if (fullscreenKeys.length) {
+    GAME_CONFIG.inputKeys.fullscreen = fullscreenKeys;
+  }
+
+}
+
+function getParamList(params, names) {
+  const values = [];
+  for (const name of names) {
+    for (const rawValue of params.getAll(name)) {
+      values.push(...splitKeyList(rawValue));
+    }
+  }
+  return uniqueKeys(values);
+}
+
+function splitKeyList(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function uniqueKeys(keys) {
+  const seen = new Set();
+  const result = [];
+
+  for (const key of keys) {
+    const normalized = normalizeInputKey(key);
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    result.push(key);
+  }
+
+  return result;
+}
+
+function normalizeInputKey(key) {
+  const raw = String(key || "").trim();
+  if (!raw) {
+    return "";
+  }
+  if (raw === " ") {
+    return "space";
+  }
+  return raw.toLowerCase();
+}
+
+function eventMatchesInput(event, keys) {
+  const candidates = [event.key, event.code].map(normalizeInputKey);
+  return keys.map(normalizeInputKey).some((key) => candidates.includes(key));
 }
 
 function createAttractVideo() {
@@ -2386,16 +2470,19 @@ window.addEventListener("keydown", (event) => {
     return;
   }
 
-  if (event.key.toLowerCase() === "f") {
+  if (eventMatchesInput(event, GAME_CONFIG.inputKeys.fullscreen)) {
     toggleFullscreen();
     return;
   }
 
-  if (event.key === "ArrowLeft" || event.key.toLowerCase() === "a") {
+  if (eventMatchesInput(event, GAME_CONFIG.inputKeys.left)) {
+    event.preventDefault();
     handleAction("left");
+    return;
   }
 
-  if (event.key === "ArrowRight" || event.key.toLowerCase() === "d") {
+  if (eventMatchesInput(event, GAME_CONFIG.inputKeys.right)) {
+    event.preventDefault();
     handleAction("right");
   }
 });
@@ -2442,6 +2529,11 @@ window.render_game_to_text = () =>
       connected: state.inputBridge.connected,
       lastSide: state.inputBridge.lastSide,
       reconnects: state.inputBridge.reconnects,
+    },
+    inputKeys: {
+      left: GAME_CONFIG.inputKeys.left,
+      right: GAME_CONFIG.inputKeys.right,
+      fullscreen: GAME_CONFIG.inputKeys.fullscreen,
     },
     screenTimer: Number(state.screenTimer.toFixed(2)),
     activeDirt: state.dirt.map((dirt) => ({

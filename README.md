@@ -13,6 +13,8 @@ El jugador protege una camiseta de Paraguay de suciedad, pasto, barro y manchas 
 - `assets/audio/README.md`: fuentes/licencias de audio.
 - `gpio_ws_bridge.py`: bridge local GPIO -> WebSocket.
 - `start.sh`: script de arranque para Raspberry OS.
+- `start-windows.ps1`: launcher Windows para Chrome.
+- `start-windows.bat`: wrapper para ejecutar el launcher Windows con doble click.
 - `kiosk_http_server.py`: servidor HTTP local para kiosk, con soporte Range para video y logs menos ruidosos.
 - `progress.md`: historial tecnico de cambios.
 
@@ -197,6 +199,84 @@ Para probar flags GPU de Chromium sin editar el launcher:
 CHROMIUM_EXTRA_FLAGS="--enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist" ./start.sh
 ```
 
+## Version Windows + Google Chrome
+
+Esta variante esta pensada para correr el mismo juego en Windows 10/11 usando Google Chrome. No necesita Raspberry ni GPIO: usa teclado, click/touch o botones arcade USB que Windows detecte como teclas.
+
+Requisitos:
+
+- Windows 10/11.
+- Google Chrome instalado.
+- Python 3 instalado y disponible como `py`, `python` o en `PYTHON_BIN`.
+
+Arranque rapido desde la carpeta del proyecto:
+
+```bat
+start-windows.bat
+```
+
+Tambien se puede ejecutar directamente desde PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start-windows.ps1
+```
+
+El launcher de Windows:
+
+1. Levanta el servidor local en `http://127.0.0.1:8000/` usando `kiosk_http_server.py`.
+2. Abre Google Chrome en kiosk/fullscreen con un perfil limpio en `%TEMP%\omo-chrome-profile`.
+3. Pasa al juego las teclas configuradas para boton izquierdo/derecho.
+4. Agrega flags para autoplay de audio, idioma `es-PY` y traduccion deshabilitada.
+5. Cierra el servidor local automaticamente cuando se cierra Chrome.
+
+En Windows no se ejecuta `gpio_ws_bridge.py`. El input fisico debe llegar como eventos de teclado desde el encoder/teclado modificado.
+
+El launcher espera a que el servidor local responda antes de abrir Chrome. Si el servidor no queda disponible, no abre Chrome y muestra los logs generados en `logs/windows-http-*.log`.
+
+Para salir del kiosk en Windows, usar `Alt+F4`. Durante pruebas puede ser mas comodo abrir sin kiosk:
+
+```bat
+set "KIOSK=0"
+start-windows.bat
+```
+
+Variables utiles en Windows:
+
+```bat
+set "HTTP_PORT=8080"
+set "CHROME_BIN=C:\Program Files\Google\Chrome\Application\chrome.exe"
+set "CHROME_USER_DATA_DIR=%TEMP%\omo-chrome-profile"
+set "LEFT_BUTTON_KEY=z"
+set "RIGHT_BUTTON_KEY=x"
+set "EFFECTS_SCALE=1"
+set "KIOSK=1"
+set "CHROME_EXTRA_FLAGS=--disable-gpu-vsync"
+start-windows.bat
+```
+
+Los defaults del launcher son:
+
+```bat
+LEFT_BUTTON_KEY=z
+RIGHT_BUTTON_KEY=x
+```
+
+Si el teclado modificado termina enviando `x` para izquierda y `z` para derecha, invertirlos:
+
+```bat
+set "LEFT_BUTTON_KEY=x"
+set "RIGHT_BUTTON_KEY=z"
+start-windows.bat
+```
+
+Tambien se pueden pasar codigos fisicos como `KeyZ`/`KeyX` si hiciera falta independizarse del layout de teclado:
+
+```bat
+set "LEFT_BUTTON_KEY=KeyZ"
+set "RIGHT_BUTTON_KEY=KeyX"
+start-windows.bat
+```
+
 ## Configuracion del juego
 
 En `game.js`, `GAME_CONFIG` concentra los valores principales:
@@ -209,6 +289,11 @@ resultSeconds: 8,
 difficulty: 1,
 attractVideoSrc: "",
 inputBridgeUrl: "",
+inputKeys: {
+  left: ["ArrowLeft", "a"],
+  right: ["ArrowRight", "d"],
+  fullscreen: ["f"],
+},
 ```
 
 Tambien se pueden pisar algunos valores por query string:
@@ -216,6 +301,20 @@ Tambien se pueden pisar algunos valores por query string:
 ```text
 ?seconds=30&difficulty=1.2&idle=20&result=8
 ```
+
+Teclas de botones:
+
+```text
+?leftKey=z&rightKey=x
+```
+
+Para reemplazar toda la lista de teclas aceptadas:
+
+```text
+?leftKeys=ArrowLeft,a,z&rightKeys=ArrowRight,d,x
+```
+
+Tambien acepta codigos como `KeyZ` y `KeyX`.
 
 Video protector futuro:
 
@@ -293,6 +392,7 @@ Controles disponibles:
 
 - Flecha izquierda o `A`: boton izquierdo.
 - Flecha derecha o `D`: boton derecho.
+- Las teclas configuradas por query string o por `LEFT_BUTTON_KEY`/`RIGHT_BUTTON_KEY` en Windows.
 - Click/touch lado izquierdo o derecho del canvas.
 - `F`: fullscreen.
 
@@ -313,9 +413,72 @@ Si esta en otra ruta:
 CHROMIUM_BIN=/ruta/a/chromium ./start.sh
 ```
 
+En Windows, si Chrome esta en otra ruta:
+
+```bat
+set "CHROME_BIN=C:\Program Files\Google\Chrome\Application\chrome.exe"
+start-windows.bat
+```
+
+### Windows no encuentra Python
+
+Instalar Python 3 desde `python.org` y marcar la opcion `Add python.exe to PATH`, o definir la ruta manualmente:
+
+```bat
+set "PYTHON_BIN=C:\Users\TU_USUARIO\AppData\Local\Programs\Python\Python312\python.exe"
+start-windows.bat
+```
+
+### Chrome muestra ERR_CONNECTION_REFUSED en Windows
+
+Eso significa que Chrome abrio, pero no habia servidor escuchando en `127.0.0.1` en ese puerto. Volver a correr:
+
+```bat
+start-windows.bat
+```
+
+El launcher debe mostrar algo como:
+
+```text
+Starting HTTP server: http://127.0.0.1:8000/
+HTTP server ready: http://127.0.0.1:8000/
+Opening Chrome: http://127.0.0.1:8000/?effects=1&leftKey=z&rightKey=x
+```
+
+Si no llega a `HTTP server ready`, revisar el error que imprime la consola y los archivos `logs/windows-http-*.err.log`. Causas comunes:
+
+- Python no esta instalado o `py` apunta a una instalacion invalida.
+- El puerto `8000` ya esta ocupado.
+- Antivirus/firewall bloquea Python en localhost.
+
+Para probar otro puerto:
+
+```bat
+set "HTTP_PORT=8080"
+start-windows.bat
+```
+
 ### Los botones no responden
 
-Verificar que el bridge haya iniciado y muestre algo como:
+En Windows, confirmar primero que el teclado modificado envia las teclas esperadas. Probar ambas orientaciones:
+
+```bat
+set "LEFT_BUTTON_KEY=z"
+set "RIGHT_BUTTON_KEY=x"
+start-windows.bat
+```
+
+o:
+
+```bat
+set "LEFT_BUTTON_KEY=x"
+set "RIGHT_BUTTON_KEY=z"
+start-windows.bat
+```
+
+Si Windows envia codigos fisicos en vez de caracteres, probar `KeyZ`/`KeyX`.
+
+En Raspberry, verificar que el bridge haya iniciado y muestre algo como:
 
 ```text
 GPIO ready. left=BCM17, right=BCM27
@@ -469,5 +632,3 @@ El juego renderiza internamente a 720x1280 y Chromium lo escala a pantalla compl
 - El juego esta pensado para portrait 9:16. En una TV 4K horizontal conviene configurar la salida/rotacion o montar el display en vertical segun el totem.
 - El umbral de premio puede editarse en `PRIZE_THRESHOLD` dentro de `game.js`.
 - Los tiempos y dificultad deben ajustarse despues de pruebas reales con publico.
-
-
