@@ -302,6 +302,7 @@ Update 2026-05-12 double button penalty:
 - Si durante gameplay entra un boton mientras el opuesto sigue presionado, se cancela el spray activo, se bloquea el disparo y se aplica `GAME_CONFIG.score.doubleButtonPenalty=8`.
 - La penalizacion tiene cooldown de 0.7s para evitar castigo por autorepeat continuo.
 - Fuera de gameplay, presionar ambos botones a la vez queda bloqueado sin avanzar pantallas extra.
+- El mensaje `UN BOTON A LA VEZ` ahora se agrega como feedback flotante grande con contorno, no solo como `flashMessage`.
 
 Update 2026-05-12 Windows autostart:
 - Agregado `start-windows-autostart.bat` con defaults editables para delay, puerto, teclas, efectos y kiosk.

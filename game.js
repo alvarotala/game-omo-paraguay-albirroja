@@ -943,6 +943,17 @@ function handleDoubleButtonPress() {
   state.activeSide = null;
   state.activeSideTime = 0;
   state.flashMessage = "UN BOTON A LA VEZ";
+  state.feedback.push({
+    text: "UN BOTON A LA VEZ",
+    x: CENTER_X,
+    y: H * 0.44,
+    vy: -20,
+    age: 0,
+    maxAge: 1.25,
+    color: "#ff4157",
+    stroke: "#ffffff",
+    size: 44,
+  });
   state.impactBurst = Math.max(state.impactBurst, 0.24);
   state.screenShake = Math.max(state.screenShake, 0.18);
   audio.play("dirtHit", 0.54, 0.88);
