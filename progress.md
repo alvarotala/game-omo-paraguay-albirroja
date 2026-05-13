@@ -297,6 +297,12 @@ Update 2026-05-12 attract video audio recovery:
 - `playAttractVideo()` reestablece explicitamente sonido al volver al attract y hace un retry con audio antes de caer a muted fallback.
 - `showAttractScreen()` pausa musica/menu con `syncHud()` antes de reactivar el video.
 
+Update 2026-05-12 double button penalty:
+- Agregado tracking de teclas presionadas para botones izquierdo/derecho.
+- Si durante gameplay entra un boton mientras el opuesto sigue presionado, se cancela el spray activo, se bloquea el disparo y se aplica `GAME_CONFIG.score.doubleButtonPenalty=8`.
+- La penalizacion tiene cooldown de 0.7s para evitar castigo por autorepeat continuo.
+- Fuera de gameplay, presionar ambos botones a la vez queda bloqueado sin avanzar pantallas extra.
+
 Update 2026-05-12 Windows autostart:
 - Agregado `start-windows-autostart.bat` con defaults editables para delay, puerto, teclas, efectos y kiosk.
 - Agregado `install-windows-autostart.ps1` / `.bat` para registrar una tarea programada `OMO Paraguay Albirroja Kiosk` al iniciar sesion del usuario actual.

@@ -15,7 +15,7 @@ const GAME_CONFIG = {
   idleSeconds: 18,
   instructionsSeconds: 10,
   resultSeconds: 8,
-  difficulty: 1,
+  difficulty: 1.5,
   attractVideoSrc: "video.mp4",
   inputBridgeUrl: "",
   keyBindings: {
@@ -49,6 +49,7 @@ const GAME_CONFIG = {
     cleanBeforeHit: 5,
     cleanAfterHit: 1,
     shirtPenalty: 7,
+    doubleButtonPenalty: 8,
     max: 100,
   },
 };
@@ -178,6 +179,12 @@ const state = {
   flashMessage: "PROTEGE TU CAMISETA",
   impactBurst: 0,
   screenShake: 0,
+  inputButtons: {
+    left: false,
+    right: false,
+  },
+  lastDoubleButtonPenaltyAt: -Infinity,
+  doubleButtonPresses: 0,
   activeSide: null,
   activeSideTime: 0,
   result: null,
@@ -783,6 +790,11 @@ function resetSceneObjects() {
   state.screenShake = 0;
 }
 
+function resetButtonState() {
+  state.inputButtons.left = false;
+  state.inputButtons.right = false;
+}
+
 function resetRun() {
   state.roundElapsed = 0;
   state.timeLeft = GAME_CONFIG.roundSeconds;
@@ -888,6 +900,59 @@ function handleAction(side) {
     shoot(side);
     return;
   }
+}
+
+function handleButtonDown(side) {
+  const opposite = side === "left" ? "right" : "left";
+  state.inputButtons[side] = true;
+
+  if (state.inputButtons[opposite]) {
+    handleDoubleButtonPress();
+    return;
+  }
+
+  handleAction(side);
+}
+
+function handleButtonUp(side) {
+  state.inputButtons[side] = false;
+}
+
+function getInputSideFromEvent(event) {
+  if (eventMatchesInput(event, GAME_CONFIG.keyBindings.left)) {
+    return "left";
+  }
+  if (eventMatchesInput(event, GAME_CONFIG.keyBindings.right)) {
+    return "right";
+  }
+  return null;
+}
+
+function handleDoubleButtonPress() {
+  if (state.mode !== "playing") {
+    return;
+  }
+
+  if (state.time - state.lastDoubleButtonPenaltyAt < 0.7) {
+    return;
+  }
+
+  state.lastDoubleButtonPenaltyAt = state.time;
+  state.doubleButtonPresses += 1;
+  state.splashes = [];
+  state.activeSide = null;
+  state.activeSideTime = 0;
+  state.flashMessage = "UN BOTON A LA VEZ";
+  state.impactBurst = Math.max(state.impactBurst, 0.24);
+  state.screenShake = Math.max(state.screenShake, 0.18);
+  audio.play("dirtHit", 0.54, 0.88);
+  addScore(
+    -GAME_CONFIG.score.doubleButtonPenalty,
+    CENTER_X,
+    H * 0.68,
+    `-${GAME_CONFIG.score.doubleButtonPenalty}%`,
+    "#ff6f7d",
+  );
 }
 
 function shoot(side) {
@@ -2506,17 +2571,21 @@ window.addEventListener("keydown", (event) => {
     return;
   }
 
-  if (eventMatchesInput(event, GAME_CONFIG.keyBindings.left)) {
+  const side = getInputSideFromEvent(event);
+  if (side) {
     event.preventDefault();
-    handleAction("left");
-    return;
-  }
-
-  if (eventMatchesInput(event, GAME_CONFIG.keyBindings.right)) {
-    event.preventDefault();
-    handleAction("right");
+    handleButtonDown(side);
   }
 });
+
+window.addEventListener("keyup", (event) => {
+  const side = getInputSideFromEvent(event);
+  if (side) {
+    handleButtonUp(side);
+  }
+});
+
+window.addEventListener("blur", resetButtonState);
 
 window.setGameConfig = (updates = {}) => {
   const { score, audio: audioUpdates, ...rest } = updates;
@@ -2560,6 +2629,11 @@ window.render_game_to_text = () =>
       connected: state.inputBridge.connected,
       lastSide: state.inputBridge.lastSide,
       reconnects: state.inputBridge.reconnects,
+    },
+    inputButtons: {
+      left: state.inputButtons.left,
+      right: state.inputButtons.right,
+      doubleButtonPresses: state.doubleButtonPresses,
     },
     screenTimer: Number(state.screenTimer.toFixed(2)),
     activeDirt: state.dirt.map((dirt) => ({
