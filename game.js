@@ -18,7 +18,7 @@ const GAME_CONFIG = {
   difficulty: 1,
   attractVideoSrc: "video.mp4",
   inputBridgeUrl: "",
-  inputKeys: {
+  keyBindings: {
     left: ["ArrowLeft", "a"],
     right: ["ArrowRight", "d"],
     fullscreen: ["f"],
@@ -110,7 +110,6 @@ const SPRAY_CONFIG = {
     direction: 1,
     color: "#58d9ff",
     accent: "#0a8fea",
-    label: "IZQUIERDA",
   },
   right: {
     originX: W * 0.86,
@@ -120,7 +119,6 @@ const SPRAY_CONFIG = {
     direction: -1,
     color: "#70ffc1",
     accent: "#12a06a",
-    label: "DERECHA",
   },
 };
 
@@ -247,29 +245,28 @@ function applyRuntimeOverrides() {
 function applyInputKeyOverrides(params) {
   const leftList = getParamList(params, ["leftKeys", "keysLeft"]);
   if (leftList.length) {
-    GAME_CONFIG.inputKeys.left = leftList;
+    GAME_CONFIG.keyBindings.left = leftList;
   }
 
   const rightList = getParamList(params, ["rightKeys", "keysRight"]);
   if (rightList.length) {
-    GAME_CONFIG.inputKeys.right = rightList;
+    GAME_CONFIG.keyBindings.right = rightList;
   }
 
   const leftExtra = getParamList(params, ["leftKey", "keyLeft"]);
   if (leftExtra.length) {
-    GAME_CONFIG.inputKeys.left = uniqueKeys([...GAME_CONFIG.inputKeys.left, ...leftExtra]);
+    GAME_CONFIG.keyBindings.left = uniqueKeys([...GAME_CONFIG.keyBindings.left, ...leftExtra]);
   }
 
   const rightExtra = getParamList(params, ["rightKey", "keyRight"]);
   if (rightExtra.length) {
-    GAME_CONFIG.inputKeys.right = uniqueKeys([...GAME_CONFIG.inputKeys.right, ...rightExtra]);
+    GAME_CONFIG.keyBindings.right = uniqueKeys([...GAME_CONFIG.keyBindings.right, ...rightExtra]);
   }
 
   const fullscreenKeys = getParamList(params, ["fullscreenKey", "fullscreenKeys"]);
   if (fullscreenKeys.length) {
-    GAME_CONFIG.inputKeys.fullscreen = fullscreenKeys;
+    GAME_CONFIG.keyBindings.fullscreen = fullscreenKeys;
   }
-
 }
 
 function getParamList(params, names) {
@@ -328,6 +325,7 @@ function createAttractVideo() {
 
   const video = document.createElement("video");
   video.src = GAME_CONFIG.attractVideoSrc;
+  video.defaultMuted = false;
   video.muted = false;
   video.volume = 1;
   video.loop = true;
@@ -342,6 +340,7 @@ function playAttractVideo(video, preferSound = false) {
     return;
   }
 
+  video.defaultMuted = !preferSound;
   video.muted = !preferSound;
   video.volume = 1;
   const playPromise = video.play();
@@ -349,10 +348,43 @@ function playAttractVideo(video, preferSound = false) {
     return;
   }
 
-  playPromise.catch(() => {
+  playPromise.then(() => {
+    if (preferSound) {
+      video.defaultMuted = false;
+      video.muted = false;
+      video.volume = 1;
+    }
+  }).catch(() => {
+    if (preferSound) {
+      video.defaultMuted = false;
+      video.muted = false;
+      video.volume = 1;
+      const retryPromise = video.play();
+      if (retryPromise) {
+        retryPromise.catch(() => {
+          video.defaultMuted = true;
+          video.muted = true;
+          video.play().catch(() => {});
+        });
+      }
+      return;
+    }
+
+    video.defaultMuted = true;
     video.muted = true;
     video.play().catch(() => {});
   });
+}
+
+function unlockAttractVideoAudio() {
+  state.videoAudioUnlocked = true;
+  if (!attractVideo) {
+    return;
+  }
+
+  attractVideo.defaultMuted = false;
+  attractVideo.muted = false;
+  attractVideo.volume = 1;
 }
 
 function loadImage(src) {
@@ -773,10 +805,8 @@ function showAttractScreen() {
   state.idleTimer = 0;
   state.flashMessage = "PROTEGE TU CAMISETA";
   resetSceneObjects();
-  if (attractVideo) {
-    playAttractVideo(attractVideo, state.videoAudioUnlocked);
-  }
   syncHud();
+  playAttractVideo(attractVideo, state.videoAudioUnlocked);
 }
 
 function showStartScreen() {
@@ -833,6 +863,7 @@ function handleAction(side) {
     return;
   }
 
+  unlockAttractVideoAudio();
   audio.unlock(state.mode);
   state.idleTimer = 0;
 
@@ -2452,7 +2483,7 @@ function init() {
 }
 
 canvas.addEventListener("pointerdown", (event) => {
-  state.videoAudioUnlocked = true;
+  unlockAttractVideoAudio();
   audio.unlock(state.mode);
   if (state.mode === "result") {
     return;
@@ -2464,24 +2495,24 @@ canvas.addEventListener("pointerdown", (event) => {
 });
 
 window.addEventListener("keydown", (event) => {
-  state.videoAudioUnlocked = true;
+  unlockAttractVideoAudio();
   audio.unlock(state.mode);
   if (state.mode === "result") {
     return;
   }
 
-  if (eventMatchesInput(event, GAME_CONFIG.inputKeys.fullscreen)) {
+  if (eventMatchesInput(event, GAME_CONFIG.keyBindings.fullscreen)) {
     toggleFullscreen();
     return;
   }
 
-  if (eventMatchesInput(event, GAME_CONFIG.inputKeys.left)) {
+  if (eventMatchesInput(event, GAME_CONFIG.keyBindings.left)) {
     event.preventDefault();
     handleAction("left");
     return;
   }
 
-  if (eventMatchesInput(event, GAME_CONFIG.inputKeys.right)) {
+  if (eventMatchesInput(event, GAME_CONFIG.keyBindings.right)) {
     event.preventDefault();
     handleAction("right");
   }
@@ -2529,11 +2560,6 @@ window.render_game_to_text = () =>
       connected: state.inputBridge.connected,
       lastSide: state.inputBridge.lastSide,
       reconnects: state.inputBridge.reconnects,
-    },
-    inputKeys: {
-      left: GAME_CONFIG.inputKeys.left,
-      right: GAME_CONFIG.inputKeys.right,
-      fullscreen: GAME_CONFIG.inputKeys.fullscreen,
     },
     screenTimer: Number(state.screenTimer.toFixed(2)),
     activeDirt: state.dirt.map((dirt) => ({

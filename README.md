@@ -353,7 +353,7 @@ resultSeconds: 8,
 difficulty: 1,
 attractVideoSrc: "",
 inputBridgeUrl: "",
-inputKeys: {
+keyBindings: {
   left: ["ArrowLeft", "a"],
   right: ["ArrowRight", "d"],
   fullscreen: ["f"],

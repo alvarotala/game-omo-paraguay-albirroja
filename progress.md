@@ -286,6 +286,17 @@ Update 2026-05-12 visual input labels fixed:
 - `game.js` mantiene el mapeo funcional configurable (`leftKey/rightKey`, `leftKeys/rightKeys`) para teclados modificados.
 - Se revirtio la parte visual: inicio e instrucciones vuelven a mostrar siempre izquierda/derecha con flechas `←` y `→`, sin mostrar `x`, `z`, `KeyZ` u otras teclas configuradas.
 
+Update 2026-05-12 visual input cleanup:
+- `game.js` renombro `GAME_CONFIG.inputKeys` a `GAME_CONFIG.keyBindings` para que quede claro que es solo mapeo funcional.
+- Se eliminaron labels de izquierda/derecha del config de spray y ya no se expone `inputKeys` en `render_game_to_text`.
+- Las unicas referencias visuales de botones en el canvas quedan hardcodeadas como texto izquierda/derecha y flechas `←` / `→`.
+
+Update 2026-05-12 attract video audio recovery:
+- `unlockAttractVideoAudio()` centraliza el desbloqueo del audio del video y fuerza `defaultMuted=false`, `muted=false`, `volume=1`.
+- `handleAction()` ahora llama ese desbloqueo, cubriendo teclado, pointer y cualquier input que llegue por el flujo central.
+- `playAttractVideo()` reestablece explicitamente sonido al volver al attract y hace un retry con audio antes de caer a muted fallback.
+- `showAttractScreen()` pausa musica/menu con `syncHud()` antes de reactivar el video.
+
 Update 2026-05-12 Windows autostart:
 - Agregado `start-windows-autostart.bat` con defaults editables para delay, puerto, teclas, efectos y kiosk.
 - Agregado `install-windows-autostart.ps1` / `.bat` para registrar una tarea programada `OMO Paraguay Albirroja Kiosk` al iniciar sesion del usuario actual.
