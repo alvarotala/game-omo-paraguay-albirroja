@@ -15,6 +15,10 @@ Environment=DISPLAY=:0
 Environment=XDG_RUNTIME_DIR=/run/user/%U
 Environment=EFFECTS_SCALE=0.55
 Environment=HIDE_MOUSE=1
+Environment=GPIO_PULL_UP=1
+Environment=GPIO_BUTTON_MODE=NC
+Environment=GPIO_DEBOUNCE=0.03
+Environment=GPIO_POLL_SECONDS=0.005
 Environment=GPIO_DEBUG=0
 Environment=GPIO_STDIN_SIM=0
 

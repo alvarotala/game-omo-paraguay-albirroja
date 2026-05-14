@@ -347,3 +347,15 @@ Update 2026-05-13 Raspberry GPIO active-low latency:
 - Latencia reducida: `GPIO_DEBOUNCE=0.03` y `GPIO_POLL_SECONDS=0.005` por defecto.
 - `start.sh` exporta `GPIO_POLL_SECONDS` y muestra el nivel esperado segun `GPIO_PULL_UP`.
 - README actualizado con el nuevo cableado recomendado y la opcion de compatibilidad `GPIO_PULL_UP=0` para cableado active HIGH.
+
+Update 2026-05-14 NC/NO button mode:
+- Raspberry/GPIO agrega `GPIO_BUTTON_MODE=NC|NO`, default `NC`; `pressed` queda normalizado antes de enviar por WebSocket.
+- `start.sh` exporta `GPIO_BUTTON_MODE` y muestra modo/pressed level en consola.
+- `game-omo-paraguay-albiroja.service` declara explicitamente `GPIO_BUTTON_MODE=NC`, `GPIO_PULL_UP=1`, debounce y poll.
+- Sketch Arduino Nano agrega `BUTTON_MODE_NC`, default `true`, y reporta `buttonMode` en el evento `ready`.
+- README actualizado con cableado NC/NO para Raspberry y Arduino.
+
+Update 2026-05-14 NC defaults hardened:
+- `GPIO_BUTTON_MODE` ahora solo usa NO si se define explicitamente como `NO`/`normally_open`/`open`; cualquier omision o valor no reconocido cae a NC.
+- `start.sh` aplica la misma regla en el log de arranque.
+- README aclara que NC es default en Raspberry y Arduino.
