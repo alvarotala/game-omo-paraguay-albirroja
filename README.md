@@ -63,7 +63,7 @@ Supuestos del archivo incluido:
 - Usuario de Raspberry: `admin`.
 - Carpeta del proyecto: `/home/admin/game-omo-paraguay-albirroja`.
 - Raspberry OS con autologin grafico habilitado para ese usuario.
-- Performance del juego: `EFFECTS_SCALE=0.55`.
+- Performance del juego: `GAME_RENDER_PROFILE=raspberry-light`, `GAME_FPS=30`, `EFFECTS_SCALE=0.35`.
 
 Si la carpeta final cambia, editar `WorkingDirectory` y `ExecStart` dentro del `.service` antes de instalarlo.
 
@@ -117,7 +117,7 @@ systemctl --user disable game-omo-paraguay-albiroja.service
 
 ### Ajustar variables del kiosk
 
-El `.service` deja `EFFECTS_SCALE=0.55`, que fue el valor que funciono fluido en el Pi 5. Para cambiar pines, puertos, debug o flags de Chromium, editar las lineas `Environment=` del servicio. Ejemplo:
+El `.service` deja el preset liviano de Raspberry activo. Para cambiar pines, puertos, debug o flags de Chromium, editar las lineas `Environment=` del servicio. Ejemplo:
 
 ```ini
 Environment=DISPLAY=:0
@@ -125,7 +125,9 @@ Environment=XDG_RUNTIME_DIR=/run/user/%U
 Environment=GPIO_LEFT_PIN=17
 Environment=GPIO_RIGHT_PIN=27
 Environment=GPIO_BUTTON_MODE=NC
-Environment=EFFECTS_SCALE=0.55
+Environment=GAME_RENDER_PROFILE=raspberry-light
+Environment=GAME_FPS=30
+Environment=EFFECTS_SCALE=0.35
 Environment=CHROMIUM_EXTRA_FLAGS=--enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist
 ```
 
@@ -194,7 +196,9 @@ GPIO_DEBUG=0                # 1 muestra logs detallados de cada GPIO/evento
 CHROMIUM_BIN=chromium       # Override manual del binario de Chromium
 CHROMIUM_USER_DATA_DIR=/tmp/omo-chromium-profile  # Perfil limpio para kiosk
 CHROMIUM_EXTRA_FLAGS=""      # Flags extra para pruebas
-EFFECTS_SCALE=0.7             # Escala visual de particulas/efectos para Raspberry
+GAME_RENDER_PROFILE=raspberry-light  # Preset liviano solo para Raspberry
+GAME_FPS=30                  # Limite de FPS para bajar temperatura/carga
+EFFECTS_SCALE=0.35            # Escala visual de particulas/efectos para Raspberry
 HIDE_MOUSE=1                 # 1 intenta ocultar cursor con unclutter
 ```
 
@@ -204,10 +208,10 @@ Ejemplo:
 HTTP_PORT=8080 GPIO_WS_PORT=9876 GPIO_LEFT_PIN=23 GPIO_RIGHT_PIN=24 ./start.sh
 ```
 
-Para bajar carga grafica en Raspberry Pi 5 sin cambiar codigo:
+Para probar mas calidad grafica en Raspberry, subir estos valores temporalmente:
 
 ```bash
-EFFECTS_SCALE=0.55 ./start.sh
+GAME_FPS=45 EFFECTS_SCALE=0.55 ./start.sh
 ```
 
 Para probar flags GPU de Chromium sin editar el launcher:
@@ -509,6 +513,12 @@ Tambien se pueden pisar algunos valores por query string:
 
 ```text
 ?seconds=30&difficulty=1.2&idle=20&result=8
+```
+
+Performance:
+
+```text
+?profile=raspberry-light&effects=0.35&fps=30
 ```
 
 Teclas de botones:
@@ -829,9 +839,10 @@ La tipografia del juego esta bundleada en `assets/fonts` como Barlow Condensed, 
 
 ## Optimizacion en Raspberry Pi 5
 
-El juego renderiza internamente a 720x1280 y Chromium lo escala a pantalla completa. En una TV 4K, el Pi trabaja mucho mas escalando y componiendo, asi que para maxima fluidez conviene probar en este orden:
+El launcher de Raspberry usa por defecto `profile=raspberry-light`, `fps=30` y `effects=0.35`. Ese preset mantiene el gameplay pero reduce particulas, burbujas, sombras, brillos, decoracion animada y frames por segundo para bajar temperatura/carga.
 
-- Usar `EFFECTS_SCALE=0.55 ./start.sh` si aparecen drops de FPS. El default del launcher es `0.7`.
+- Si sigue calentando, probar `GAME_FPS=24 EFFECTS_SCALE=0.25 ./start.sh`.
+- Si hay margen termico, probar `GAME_FPS=45 EFFECTS_SCALE=0.55 ./start.sh`.
 - Si la activacion lo permite, configurar la salida del sistema a 1080x1920 portrait en lugar de 4K. Visualmente se ve bien para este canvas y reduce bastante la carga.
 - Probar `CHROMIUM_EXTRA_FLAGS="--enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist" ./start.sh`; si algun flag da problemas, quitarlo y volver al default.
 - Revisar temperatura y throttling con `vcgencmd measure_temp` y `vcgencmd get_throttled`. Si hay throttling, usar fuente oficial/adecuada y cooling activo.

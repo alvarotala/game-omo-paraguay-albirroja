@@ -359,3 +359,10 @@ Update 2026-05-14 NC defaults hardened:
 - `GPIO_BUTTON_MODE` ahora solo usa NO si se define explicitamente como `NO`/`normally_open`/`open`; cualquier omision o valor no reconocido cae a NC.
 - `start.sh` aplica la misma regla en el log de arranque.
 - README aclara que NC es default en Raspberry y Arduino.
+
+Update 2026-05-14 Raspberry lightweight graphics:
+- Agregado preset `profile=raspberry-light` en `game.js`: baja particulas/burbujas, saltea brillos/sombras/lineas decorativas pesadas y reduce decoracion de resultado.
+- Agregado `fps`/`maxFps` por query string; Raspberry queda a 30 FPS por defecto para bajar carga y temperatura.
+- `start.sh` ahora usa `GAME_RENDER_PROFILE=raspberry-light`, `GAME_FPS=30`, `EFFECTS_SCALE=0.35` y pasa esos valores en la URL.
+- `game-omo-paraguay-albiroja.service` declara el mismo preset liviano para autostart.
+- README actualizado con los nuevos defaults y comandos para subir/bajar calidad en Raspberry.

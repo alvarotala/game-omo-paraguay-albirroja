@@ -13,7 +13,9 @@ KillMode=control-group
 ExecStartPre=/bin/sleep 8
 Environment=DISPLAY=:0
 Environment=XDG_RUNTIME_DIR=/run/user/%U
-Environment=EFFECTS_SCALE=0.55
+Environment=GAME_RENDER_PROFILE=raspberry-light
+Environment=GAME_FPS=30
+Environment=EFFECTS_SCALE=0.35
 Environment=HIDE_MOUSE=1
 Environment=GPIO_PULL_UP=1
 Environment=GPIO_BUTTON_MODE=NC

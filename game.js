@@ -27,6 +27,14 @@ const GAME_CONFIG = {
   performance: {
     effectsScale: 1,
     maxBubbles: 120,
+    maxFps: 0,
+    lowPower: false,
+    stageGlow: true,
+    fabricMotion: true,
+    shadows: true,
+    bubbleHighlights: true,
+    impactParticles: true,
+    resultDecorationScale: 1,
   },
   audio: {
     enabled: true,
@@ -125,6 +133,7 @@ const SPRAY_CONFIG = {
 
 const SPRAY_COLLISION_LANES = [-0.48, 0, 0.48];
 const SPRAY_VISUAL_LANES = [-1.12, -0.62, 0, 0.62, 1.12];
+const SPRAY_VISUAL_LANES_LIGHT = [-0.62, 0, 0.62];
 const SHIRT_DEFENSE_MARGIN = 62;
 
 const images = {
@@ -203,9 +212,20 @@ const state = {
 
 let rafId = 0;
 let lastTimestamp = 0;
+let lastRenderedTimestamp = 0;
 
 function applyRuntimeOverrides() {
   const params = new URLSearchParams(window.location.search);
+  const profile = (params.get("profile") || params.get("preset") || "").toLowerCase();
+  if (
+    profile === "raspberry" ||
+    profile === "raspberry-light" ||
+    queryFlagEnabled(params.get("raspberry")) ||
+    queryFlagEnabled(params.get("lowPower"))
+  ) {
+    applyRaspberryPerformancePreset();
+  }
+
   const numericOverrides = [
     ["seconds", "roundSeconds"],
     ["idle", "idleSeconds"],
@@ -236,6 +256,11 @@ function applyRuntimeOverrides() {
     GAME_CONFIG.performance.maxBubbles = Math.round(120 * GAME_CONFIG.performance.effectsScale);
   }
 
+  const maxFps = Number(params.get("fps") || params.get("maxFps"));
+  if (Number.isFinite(maxFps) && maxFps > 0) {
+    GAME_CONFIG.performance.maxFps = clamp(maxFps, 20, 60);
+  }
+
   const debugInput = params.get("debugInput") || params.get("debug");
   if (debugInput === "1" || debugInput === "true") {
     GAME_CONFIG.debugInput = true;
@@ -247,6 +272,25 @@ function applyRuntimeOverrides() {
   }
 
   applyInputKeyOverrides(params);
+}
+
+function queryFlagEnabled(value) {
+  return ["1", "true", "yes", "on"].includes(String(value || "").toLowerCase());
+}
+
+function applyRaspberryPerformancePreset() {
+  Object.assign(GAME_CONFIG.performance, {
+    effectsScale: 0.35,
+    maxBubbles: 42,
+    maxFps: 30,
+    lowPower: true,
+    stageGlow: false,
+    fabricMotion: false,
+    shadows: false,
+    bubbleHighlights: false,
+    impactParticles: false,
+    resultDecorationScale: 0.45,
+  });
 }
 
 function applyInputKeyOverrides(params) {
@@ -1408,7 +1452,7 @@ function triggerShirtImpact(dirt, hit) {
     maxAge: 0.78,
     color: dirt.sprite,
     ringColor: dirt.kind === "pasto" ? "#a6ff7a" : "#ff775f",
-    particles: Array.from({ length: effectAmount(26) }, () => {
+    particles: Array.from({ length: GAME_CONFIG.performance.impactParticles ? effectAmount(26) : 0 }, () => {
       const angle = randomBetween(0, Math.PI * 2);
       const speed = randomBetween(110, 360);
       return {
@@ -1707,6 +1751,10 @@ function drawCoverVideo(video) {
 }
 
 function drawFabricMotion() {
+  if (!GAME_CONFIG.performance.fabricMotion) {
+    return;
+  }
+
   ctx.save();
   ctx.globalCompositeOperation = "screen";
   for (let index = 0; index < 18; index += 1) {
@@ -1868,11 +1916,15 @@ function drawCleanWinScene() {
   ctx.fillRect(0, 180, W, 760);
   ctx.restore();
 
-  drawCleanRays(CENTER_X, 620);
+  if (!GAME_CONFIG.performance.lowPower) {
+    drawCleanRays(CENTER_X, 620);
+  }
   drawResultBubbles(CENTER_X, 610, 250);
   drawMiniShirt(CENTER_X, 620, 1.95);
-  drawCleanSparkles(CENTER_X, 620);
-  drawResultBubbles(CENTER_X, 640, 330, 0.55);
+  if (!GAME_CONFIG.performance.lowPower) {
+    drawCleanSparkles(CENTER_X, 620);
+    drawResultBubbles(CENTER_X, 640, 330, 0.55);
+  }
 
   ctx.save();
   ctx.shadowColor = "rgba(112,255,193,0.72)";
@@ -1898,8 +1950,9 @@ function drawCleanRays(cx, cy) {
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
-  for (let index = 0; index < 18; index += 1) {
-    const angle = (index / 18) * Math.PI * 2 + state.time * 0.55;
+  const rayCount = Math.max(6, Math.round(18 * GAME_CONFIG.performance.resultDecorationScale));
+  for (let index = 0; index < rayCount; index += 1) {
+    const angle = (index / rayCount) * Math.PI * 2 + state.time * 0.55;
     const inner = 112 + Math.sin(state.time * 2 + index) * 8;
     const outer = 295 + Math.sin(state.time * 2.4 + index * 0.7) * 28;
     const alpha = 0.16 + (index % 3) * 0.035;
@@ -1923,8 +1976,9 @@ function drawCleanRays(cx, cy) {
     ctx.stroke();
   }
 
-  for (let ring = 0; ring < 3; ring += 1) {
-    const progress = (state.time * 0.7 + ring / 3) % 1;
+  const ringCount = Math.max(1, Math.round(3 * GAME_CONFIG.performance.resultDecorationScale));
+  for (let ring = 0; ring < ringCount; ring += 1) {
+    const progress = (state.time * 0.7 + ring / ringCount) % 1;
     ctx.strokeStyle = "rgba(255,255,255," + (0.24 * (1 - progress)) + ")";
     ctx.lineWidth = 8 * (1 - progress) + 1;
     ctx.beginPath();
@@ -1939,7 +1993,8 @@ function drawCleanSparkles(cx, cy) {
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
-  for (let index = 0; index < 28; index += 1) {
+  const sparkleCount = Math.max(8, Math.round(28 * GAME_CONFIG.performance.resultDecorationScale));
+  for (let index = 0; index < sparkleCount; index += 1) {
     const angle = index * 2.399 + state.time * 0.9;
     const distance = 115 + ((index * 43) % 180);
     const x = cx + Math.cos(angle) * distance;
@@ -1967,7 +2022,8 @@ function drawCleanSparkles(cx, cy) {
 
 function drawResultBubbles(cx, cy, radius, alphaScale = 1) {
   ctx.save();
-  for (let index = 0; index < 42; index += 1) {
+  const bubbleCount = Math.max(8, Math.round(42 * GAME_CONFIG.performance.resultDecorationScale));
+  for (let index = 0; index < bubbleCount; index += 1) {
     const angle = index * 1.72 + state.time * 0.58;
     const ring = radius * (0.32 + ((index * 37) % 100) / 120);
     const x = cx + Math.cos(angle) * ring + Math.sin(state.time * 1.8 + index) * 9;
@@ -2022,6 +2078,10 @@ function drawRedClock(x, y, radius) {
 }
 
 function drawStageGlow() {
+  if (!GAME_CONFIG.performance.stageGlow) {
+    return;
+  }
+
   if (!staticLayers.stageGlowReady) {
     prepareStageGlowLayer();
   }
@@ -2034,9 +2094,11 @@ function drawShirt() {
   ctx.save();
   ctx.translate(transform.x, transform.y);
   ctx.scale(transform.scale, transform.scale);
-  ctx.shadowColor = "rgba(4, 16, 43, 0.42)";
-  ctx.shadowBlur = 42;
-  ctx.shadowOffsetY = 20;
+  if (GAME_CONFIG.performance.shadows) {
+    ctx.shadowColor = "rgba(4, 16, 43, 0.42)";
+    ctx.shadowBlur = 42;
+    ctx.shadowOffsetY = 20;
+  }
 
   if (images.shirt.complete) {
     ctx.drawImage(
@@ -2073,9 +2135,11 @@ function drawDirt() {
     ctx.save();
     ctx.translate(dirt.x, dirt.y);
     ctx.rotate(dirt.rotation);
-    ctx.shadowColor = dirt.hitShirt ? "rgba(0,0,0,0.08)" : "rgba(0,0,0,0.28)";
-    ctx.shadowBlur = dirt.hitShirt ? 5 : 15;
-    ctx.shadowOffsetY = dirt.hitShirt ? 2 : 9;
+    if (GAME_CONFIG.performance.shadows) {
+      ctx.shadowColor = dirt.hitShirt ? "rgba(0,0,0,0.08)" : "rgba(0,0,0,0.28)";
+      ctx.shadowBlur = dirt.hitShirt ? 5 : 15;
+      ctx.shadowOffsetY = dirt.hitShirt ? 2 : 9;
+    }
     ctx.globalAlpha = dirt.hitShirt ? 0.78 : 1;
     const size = dirt.radius * 2.75;
     ctx.drawImage(dirt.sprite, -size / 2, -size / 2, size, size);
@@ -2088,8 +2152,9 @@ function drawSplashes() {
     const spray = SPRAY_CONFIG[splash.side];
     const alpha = Math.max(0, 1 - splash.age / splash.maxAge);
     const width = splash.width * (0.45 + alpha * 0.3);
+    const visualLanes = GAME_CONFIG.performance.lowPower ? SPRAY_VISUAL_LANES_LIGHT : SPRAY_VISUAL_LANES;
 
-    for (const lane of SPRAY_VISUAL_LANES) {
+    for (const lane of visualLanes) {
       const laneFalloff = 1 - Math.abs(lane) * 0.34;
 
       ctx.save();
@@ -2102,15 +2167,17 @@ function drawSplashes() {
       ctx.stroke();
       ctx.restore();
 
-      ctx.save();
-      ctx.globalAlpha = (0.34 + alpha * 0.32) * laneFalloff;
-      ctx.strokeStyle = "rgba(255,255,255,0.86)";
-      ctx.lineWidth = 5 + laneFalloff * 6;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      drawSprayCurve(spray, lane * 0.72);
-      ctx.stroke();
-      ctx.restore();
+      if (!GAME_CONFIG.performance.lowPower) {
+        ctx.save();
+        ctx.globalAlpha = (0.34 + alpha * 0.32) * laneFalloff;
+        ctx.strokeStyle = "rgba(255,255,255,0.86)";
+        ctx.lineWidth = 5 + laneFalloff * 6;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        drawSprayCurve(spray, lane * 0.72);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
     for (const particle of splash.foam) {
@@ -2120,10 +2187,12 @@ function drawSplashes() {
       ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = `rgba(139,232,255,${particleAlpha * 0.66})`;
-      ctx.beginPath();
-      ctx.arc(particle.x + 2, particle.y - 2, particle.radius * 0.72, 0, Math.PI * 2);
-      ctx.fill();
+      if (!GAME_CONFIG.performance.lowPower) {
+        ctx.fillStyle = `rgba(139,232,255,${particleAlpha * 0.66})`;
+        ctx.beginPath();
+        ctx.arc(particle.x + 2, particle.y - 2, particle.radius * 0.72, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 }
@@ -2140,10 +2209,12 @@ function drawBubbles() {
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = `rgba(255,255,255,${alpha * 0.62})`;
-    ctx.beginPath();
-    ctx.arc(bubble.x - bubble.radius * 0.28, bubble.y - bubble.radius * 0.32, bubble.radius * 0.18, 0, Math.PI * 2);
-    ctx.fill();
+    if (GAME_CONFIG.performance.bubbleHighlights) {
+      ctx.fillStyle = `rgba(255,255,255,${alpha * 0.62})`;
+      ctx.beginPath();
+      ctx.arc(bubble.x - bubble.radius * 0.28, bubble.y - bubble.radius * 0.32, bubble.radius * 0.18, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   ctx.restore();
 }
@@ -2168,21 +2239,23 @@ function drawImpactEffects() {
     ctx.arc(effect.x, effect.y, ringRadius * 0.58, 0, Math.PI * 2);
     ctx.fill();
 
-    for (const particle of effect.particles) {
-      const particleAlpha = Math.max(0, particle.life / particle.maxLife);
-      ctx.save();
-      ctx.globalAlpha = particleAlpha;
-      ctx.translate(particle.x, particle.y);
-      ctx.rotate(particle.rotation);
-      ctx.fillStyle = particle.color;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, particle.radius, particle.radius * 0.62, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.32)";
-      ctx.beginPath();
-      ctx.arc(-particle.radius * 0.24, -particle.radius * 0.22, particle.radius * 0.28, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+    if (GAME_CONFIG.performance.impactParticles) {
+      for (const particle of effect.particles) {
+        const particleAlpha = Math.max(0, particle.life / particle.maxLife);
+        ctx.save();
+        ctx.globalAlpha = particleAlpha;
+        ctx.translate(particle.x, particle.y);
+        ctx.rotate(particle.rotation);
+        ctx.fillStyle = particle.color;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, particle.radius, particle.radius * 0.62, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.32)";
+        ctx.beginPath();
+        ctx.arc(-particle.radius * 0.24, -particle.radius * 0.22, particle.radius * 0.28, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
     }
   }
   ctx.restore();
@@ -2579,8 +2652,15 @@ function toggleFullscreen() {
 }
 
 function frame(timestamp) {
-  const dt = Math.min(0.033, (timestamp - lastTimestamp) / 1000 || 0.016);
+  const maxFps = GAME_CONFIG.performance.maxFps;
+  if (maxFps > 0 && lastRenderedTimestamp > 0 && timestamp - lastRenderedTimestamp < 1000 / maxFps) {
+    rafId = window.requestAnimationFrame(frame);
+    return;
+  }
+
+  const dt = Math.min(0.05, (timestamp - lastTimestamp) / 1000 || 0.016);
   lastTimestamp = timestamp;
+  lastRenderedTimestamp = timestamp;
   update(dt);
   draw();
   rafId = window.requestAnimationFrame(frame);
@@ -2588,7 +2668,9 @@ function frame(timestamp) {
 
 function init() {
   prepareBackgroundLayer();
-  prepareStageGlowLayer();
+  if (GAME_CONFIG.performance.stageGlow) {
+    prepareStageGlowLayer();
+  }
   prepareShirtMask();
   inputBridge.connect();
   syncHud();
@@ -2669,6 +2751,12 @@ window.render_game_to_text = () =>
     roundSeconds: GAME_CONFIG.roundSeconds,
     difficulty: GAME_CONFIG.difficulty,
     idleSeconds: GAME_CONFIG.idleSeconds,
+    performance: {
+      lowPower: GAME_CONFIG.performance.lowPower,
+      effectsScale: GAME_CONFIG.performance.effectsScale,
+      maxFps: GAME_CONFIG.performance.maxFps,
+      maxBubbles: GAME_CONFIG.performance.maxBubbles,
+    },
     audioEnabled: GAME_CONFIG.audio.enabled,
     audioUnlocked: audio.unlocked,
     videoAudioUnlocked: state.videoAudioUnlocked,

@@ -17,7 +17,9 @@ GPIO_STDIN_SIM="${GPIO_STDIN_SIM:-0}"
 GPIO_DEBUG="${GPIO_DEBUG:-0}"
 CHROMIUM_BIN="${CHROMIUM_BIN:-}"
 CHROMIUM_USER_DATA_DIR="${CHROMIUM_USER_DATA_DIR:-/tmp/omo-chromium-profile}"
-EFFECTS_SCALE="${EFFECTS_SCALE:-0.7}"
+GAME_RENDER_PROFILE="${GAME_RENDER_PROFILE:-raspberry-light}"
+GAME_FPS="${GAME_FPS:-30}"
+EFFECTS_SCALE="${EFFECTS_SCALE:-0.35}"
 HIDE_MOUSE="${HIDE_MOUSE:-1}"
 
 if [[ -z "$CHROMIUM_BIN" ]]; then
@@ -95,7 +97,7 @@ if [[ "$HIDE_MOUSE" == "1" ]]; then
   fi
 fi
 
-GAME_URL="http://127.0.0.1:${HTTP_PORT}/?bridge=ws://127.0.0.1:${GPIO_WS_PORT}&effects=${EFFECTS_SCALE}"
+GAME_URL="http://127.0.0.1:${HTTP_PORT}/?bridge=ws://127.0.0.1:${GPIO_WS_PORT}&profile=${GAME_RENDER_PROFILE}&effects=${EFFECTS_SCALE}&fps=${GAME_FPS}"
 echo "HTTP server: http://127.0.0.1:${HTTP_PORT}/"
 echo "GPIO bridge: ws://127.0.0.1:${GPIO_WS_PORT}"
 GPIO_ACTIVE_LEVEL="LOW"
@@ -115,6 +117,7 @@ if [[ "$GPIO_BUTTON_MODE_LABEL" == "NC" ]]; then
   fi
 fi
 echo "GPIO pins BCM: left=${GPIO_LEFT_PIN}, right=${GPIO_RIGHT_PIN}, mode=${GPIO_BUTTON_MODE_LABEL}, pressed=${GPIO_PRESS_LEVEL}, debounce=${GPIO_DEBOUNCE}s, poll=${GPIO_POLL_SECONDS}s"
+echo "Render profile: ${GAME_RENDER_PROFILE}, fps=${GAME_FPS}"
 echo "Effects scale: ${EFFECTS_SCALE}"
 echo "Opening Chromium kiosk: $GAME_URL"
 
