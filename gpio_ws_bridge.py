@@ -17,9 +17,9 @@ RIGHT_PIN = int(os.environ.get("GPIO_RIGHT_PIN", "27"))
 DEBOUNCE_SECONDS = float(os.environ.get("GPIO_DEBOUNCE", "0.03"))
 POLL_SECONDS = float(os.environ.get("GPIO_POLL_SECONDS", "0.005"))
 PULL_UP = os.environ.get("GPIO_PULL_UP", "1").lower() in {"1", "true", "yes"}
-BUTTON_MODE = os.environ.get("GPIO_BUTTON_MODE", "NC").strip().lower().replace("-", "_")
-BUTTON_NO = BUTTON_MODE in {"no", "normally_open", "normal_open", "open"}
-BUTTON_NC = not BUTTON_NO
+BUTTON_MODE = os.environ.get("GPIO_BUTTON_MODE", "NO").strip().lower().replace("-", "_")
+BUTTON_NC = BUTTON_MODE in {"nc", "normally_closed", "normal_closed", "closed"}
+BUTTON_NO = not BUTTON_NC
 BUTTON_MODE_LABEL = "NC" if BUTTON_NC else "NO"
 STDIN_SIM = os.environ.get("GPIO_STDIN_SIM", "0").lower() in {"1", "true", "yes"}
 GPIO_DEBUG = os.environ.get("GPIO_DEBUG", "0").lower() in {"1", "true", "yes"}
@@ -172,23 +172,34 @@ def setup_gpio():
     buttons["left"] = DigitalInputDevice(LEFT_PIN, pull_up=PULL_UP)
     buttons["right"] = DigitalInputDevice(RIGHT_PIN, pull_up=PULL_UP)
     pull = "pull-up" if PULL_UP else "pull-down"
-    active_level = "LOW" if PULL_UP else "HIGH"
-    pressed_level = ("HIGH" if PULL_UP else "LOW") if BUTTON_NC else active_level
+    pressed_on_high = (PULL_UP and BUTTON_NC) or (not PULL_UP and BUTTON_NO)
+    pressed_level = "HIGH" if pressed_on_high else "LOW"
+    rest_level = "LOW" if pressed_on_high else "HIGH"
     log(
         "GPIO polling ready. "
         f"left=BCM{LEFT_PIN}, right=BCM{RIGHT_PIN}, {pull}, "
-        f"active={active_level}, button_mode={BUTTON_MODE_LABEL}, "
+        f"button_mode={BUTTON_MODE_LABEL}, rest_level={rest_level}, "
         f"pressed_level={pressed_level}, debounce={DEBOUNCE_SECONDS}s, poll={POLL_SECONDS}s"
     )
-    left_initial = int(buttons["left"].value)
-    right_initial = int(buttons["right"].value)
-    log(f"Initial GPIO pressed states: left={left_initial}, right={right_initial}")
+    left_initial = "HIGH" if gpio_signal_high(buttons["left"]) else "LOW"
+    right_initial = "HIGH" if gpio_signal_high(buttons["right"]) else "LOW"
+    log(
+        "Initial GPIO levels: "
+        f"left={left_initial}/pressed={gpio_pressed(buttons['left'])}, "
+        f"right={right_initial}/pressed={gpio_pressed(buttons['right'])}"
+    )
     return True
 
 
-def gpio_pressed(device):
+def gpio_signal_high(device):
     active = bool(device.value)
-    return not active if BUTTON_NC else active
+    return not active if PULL_UP else active
+
+
+def gpio_pressed(device):
+    signal_high = gpio_signal_high(device)
+    pressed_on_high = (PULL_UP and BUTTON_NC) or (not PULL_UP and BUTTON_NO)
+    return signal_high if pressed_on_high else not signal_high
 
 
 async def gpio_poll_loop():

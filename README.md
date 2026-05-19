@@ -124,7 +124,8 @@ Environment=DISPLAY=:0
 Environment=XDG_RUNTIME_DIR=/run/user/%U
 Environment=GPIO_LEFT_PIN=17
 Environment=GPIO_RIGHT_PIN=27
-Environment=GPIO_BUTTON_MODE=NC
+Environment=GPIO_PULL_UP=1
+Environment=GPIO_BUTTON_MODE=NO
 Environment=GAME_RENDER_PROFILE=raspberry-light
 Environment=GAME_FPS=30
 Environment=EFFECTS_SCALE=0.35
@@ -145,25 +146,25 @@ Defaults:
 
 - Boton izquierdo: BCM `17`.
 - Boton derecho: BCM `27`.
-- Modo de boton: NC (`GPIO_BUTTON_MODE=NC`).
+- Modo de boton: NO con pull-up interno (`GPIO_BUTTON_MODE=NO`).
 - Pull interno: pull-up (`GPIO_PULL_UP=1`).
-- Con NC: en reposo el pin queda LOW; al presionar se abre y queda HIGH.
+- En reposo el pin queda `HIGH`; al presionar conecta a `GND`, queda `LOW` y se envia `pressed:true`.
 - Debounce: `0.03` segundos.
 - Polling: `0.005` segundos.
 
-Conexion sugerida con defaults para botones NC:
-
-- Terminal `NC` del boton al pin GPIO BCM correspondiente.
-- Terminal `COM` del boton a `GND`.
-- Usar pull-up interno por software.
-- No enviar 5V a los GPIO.
-- No hace falta llevar `3.3V` al boton.
-
-Para botones NO, usar el mismo pull-up pero cambiar el contacto:
+Conexion sugerida con defaults:
 
 - Terminal `NO` del boton al pin GPIO BCM correspondiente.
 - Terminal `COM` del boton a `GND`.
-- Ejecutar con `GPIO_BUTTON_MODE=NO`.
+- Usar pull-up interno por software.
+- No hace falta resistencia externa.
+- No enviar `5V` ni `3.3V` al boton.
+
+Para botones `NC` con el mismo cableado a `GND`, cambiar el modo:
+
+```bash
+GPIO_BUTTON_MODE=NC ./start.sh
+```
 
 Para cambiar pines:
 
@@ -171,10 +172,16 @@ Para cambiar pines:
 GPIO_LEFT_PIN=5 GPIO_RIGHT_PIN=6 ./start.sh
 ```
 
-Si necesitás mantener el cableado viejo con el boton llevando el GPIO a HIGH, usar:
+Con los defaults actuales no hace falta configurar nada para botones `NO` a `GND`:
 
 ```bash
-GPIO_PULL_UP=0 ./start.sh
+./start.sh
+```
+
+Si alguna vez se usa un cableado active HIGH externo, con boton llevando el GPIO a `3.3V`, cambiar a pull-down:
+
+```bash
+GPIO_PULL_UP=0 GPIO_BUTTON_MODE=NO ./start.sh
 ```
 
 ## Variables de configuracion
@@ -189,8 +196,8 @@ GPIO_LEFT_PIN=17            # Pin BCM para izquierda
 GPIO_RIGHT_PIN=27           # Pin BCM para derecha
 GPIO_DEBOUNCE=0.03          # Antirrebote en segundos
 GPIO_POLL_SECONDS=0.005     # Frecuencia de lectura GPIO
-GPIO_PULL_UP=1              # 1 pull-up a 3.3V interno, 0 pull-down interno
-GPIO_BUTTON_MODE=NC         # NC por defecto; usar NO solo si se cablea contacto NO
+GPIO_PULL_UP=1              # 1 pull-up interno, 0 pull-down interno
+GPIO_BUTTON_MODE=NO         # NO por defecto: HIGH reposo, LOW HIT
 GPIO_STDIN_SIM=0            # 1 habilita simulacion por teclado en consola del bridge
 GPIO_DEBUG=0                # 1 muestra logs detallados de cada GPIO/evento
 CHROMIUM_BIN=chromium       # Override manual del binario de Chromium
@@ -336,23 +343,15 @@ Seleccionar:
 
 Cableado con el sketch incluido:
 
-- El sketch viene configurado para botones `NC`: `BUTTON_MODE_NC = true`.
-- Boton izquierdo: pin `D4` al terminal `NC`, `COM` a `GND`.
-- Boton derecho: pin `D5` al terminal `NC`, `COM` a `GND`.
+- El sketch viene configurado con pull-up interno: `HIGH` en reposo, `LOW` = HIT.
+- Boton izquierdo: pin `D4` al terminal `NO`, `COM` a `GND`.
+- Boton derecho: pin `D5` al terminal `NO`, `COM` a `GND`.
 - Usa `INPUT_PULLUP`, no hace falta resistencia externa ni llevar `5V` al boton.
-
-El Arduino tambien queda en `NC` por defecto. Para botones `NO`, editar el sketch antes de subirlo:
-
-```cpp
-const bool BUTTON_MODE_NC = false;
-```
-
-Y cablear `NO` a `D4`/`D5`, con `COM` a `GND`.
 
 El sketch envia eventos como:
 
 ```json
-{"type":"ready","source":"arduino","name":"omo-nano-buttons","buttonMode":"NC"}
+{"type":"ready","source":"arduino","name":"omo-nano-buttons","buttonMode":"NO","restLevel":"HIGH","pressedLevel":"LOW"}
 {"type":"button","side":"left","pressed":true,"source":"arduino","ms":1234}
 {"type":"button","side":"left","pressed":false,"source":"arduino","ms":1300}
 ```
@@ -395,7 +394,7 @@ El juego recibe press/release por WebSocket, asi que tambien funciona la regla d
 Si solo aparece:
 
 ```json
-{"type":"ready","source":"arduino","name":"omo-nano-buttons","buttonMode":"NC"}
+{"type":"ready","source":"arduino","name":"omo-nano-buttons","buttonMode":"NO","restLevel":"HIGH","pressedLevel":"LOW"}
 ```
 
 pero no aparecen eventos al accionar los botones, revisar:
@@ -403,11 +402,9 @@ pero no aparecen eventos al accionar los botones, revisar:
 - Que el sketch cargado sea `arduino/nano_button_serial/nano_button_serial.ino`.
 - Que el Serial Monitor este en `115200 baud`.
 - Que estes usando los pines digitales rotulados `D4` y `D5`, no las patas fisicas 4/5 del chip.
-- Que `BUTTON_MODE_NC` coincida con el contacto usado: `true` para `NC`, `false` para `NO`.
-- Que cada boton use `COM` a `GND` del mismo Nano.
+- Que cada boton use `NO` al pin `D4`/`D5` y `COM` a `GND` del mismo Nano.
 - Que no se este uniendo `D4` con `D5` entre si.
-- Con `NC`, el pin debe leer `LOW` en reposo y `HIGH` al presionar.
-- Con `NO`, el pin debe leer `HIGH` en reposo y `LOW` al presionar.
+- El pin debe leer `HIGH` en reposo y `LOW` al presionar.
 - Mantener cada cambio al menos 0.05 segundos; el debounce filtra toques demasiado rapidos.
 
 Para diagnostico electrico puntual, probar un sketch minimo en Arduino IDE:
@@ -582,7 +579,7 @@ El cliente del juego tambien acepta mensajes simples como `left`, `right`, `l`, 
 
 El campo `pressed` permite que el juego sepa si el boton sigue apretado. Esto es necesario para penalizar cuando se aprietan izquierda y derecha al mismo tiempo, y aplica tanto en Raspberry/GPIO como en Arduino/Serial.
 
-En Raspberry, `pressed` ya sale normalizado segun `GPIO_BUTTON_MODE=NC` o `GPIO_BUTTON_MODE=NO`.
+En Raspberry, `pressed` ya sale normalizado segun `GPIO_PULL_UP` y `GPIO_BUTTON_MODE`. Con los defaults (`GPIO_PULL_UP=1`, `GPIO_BUTTON_MODE=NO`), `HIGH` envia `pressed:false` y `LOW` envia `pressed:true`.
 
 Para correr solo el bridge:
 
@@ -705,7 +702,7 @@ Si Windows envia codigos fisicos en vez de caracteres, probar `KeyZ`/`KeyX`.
 En Raspberry, verificar que el bridge haya iniciado y muestre algo como:
 
 ```text
-GPIO polling ready. left=BCM17, right=BCM27, pull-up, active=LOW, button_mode=NC, pressed_level=HIGH, debounce=0.03s, poll=0.005s
+GPIO polling ready. left=BCM17, right=BCM27, pull-up, button_mode=NO, rest_level=HIGH, pressed_level=LOW, debounce=0.03s, poll=0.005s
 WebSocket bridge listening on ws://127.0.0.1:8765
 ```
 

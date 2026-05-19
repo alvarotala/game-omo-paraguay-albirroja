@@ -4,12 +4,11 @@
   Arduino Nano clasico no puede emular teclado USB HID. Este sketch lee dos
   botones y envia eventos por Serial para que Python los convierta a WebSocket.
 
-  Cableado recomendado con botones NC:
-  - Boton izquierdo: pin D4 al terminal NC, COM a GND
-  - Boton derecho: pin D5 al terminal NC, COM a GND
+  Cableado recomendado con pull-up interno y botones NO:
+  - Boton izquierdo: pin D4 al terminal NO, COM a GND
+  - Boton derecho: pin D5 al terminal NO, COM a GND
   - Usa INPUT_PULLUP interno, no hace falta resistencia externa
-
-  Para botones NO, cambiar BUTTON_MODE_NC a false y cablear NO a pin, COM a GND.
+  - En reposo el pin lee HIGH; al presionar conecta a GND, lee LOW y envia pressed:true
 
   Eventos Serial:
   {"type":"button","side":"left","pressed":true,"source":"arduino","ms":1234}
@@ -20,7 +19,7 @@ const int LEFT_BUTTON_PIN = 4;
 const int RIGHT_BUTTON_PIN = 5;
 const unsigned long DEBOUNCE_MS = 35;
 const unsigned long SERIAL_BAUD = 115200;
-const bool BUTTON_MODE_NC = true;
+const int PRESSED_LEVEL = LOW;
 
 struct ButtonState {
   const char* side;
@@ -33,13 +32,8 @@ struct ButtonState {
 ButtonState leftButton = {"left", LEFT_BUTTON_PIN, HIGH, HIGH, 0};
 ButtonState rightButton = {"right", RIGHT_BUTTON_PIN, HIGH, HIGH, 0};
 
-bool isContactClosedToGround(int reading) {
-  return reading == LOW;
-}
-
 bool isPressed(int reading) {
-  const bool contactClosed = isContactClosedToGround(reading);
-  return BUTTON_MODE_NC ? !contactClosed : contactClosed;
+  return reading == PRESSED_LEVEL;
 }
 
 void sendButtonEvent(const char* side, bool pressed) {
@@ -90,9 +84,7 @@ void setup() {
     delay(10);
   }
 
-  Serial.print("{\"type\":\"ready\",\"source\":\"arduino\",\"name\":\"omo-nano-buttons\",\"buttonMode\":\"");
-  Serial.print(BUTTON_MODE_NC ? "NC" : "NO");
-  Serial.println("\"}");
+  Serial.println("{\"type\":\"ready\",\"source\":\"arduino\",\"name\":\"omo-nano-buttons\",\"buttonMode\":\"NO\",\"restLevel\":\"HIGH\",\"pressedLevel\":\"LOW\"}");
   initButton(leftButton);
   initButton(rightButton);
 }

@@ -366,3 +366,11 @@ Update 2026-05-14 Raspberry lightweight graphics:
 - `start.sh` ahora usa `GAME_RENDER_PROFILE=raspberry-light`, `GAME_FPS=30`, `EFFECTS_SCALE=0.35` y pasa esos valores en la URL.
 - `game-omo-paraguay-albiroja.service` declara el mismo preset liviano para autostart.
 - README actualizado con los nuevos defaults y comandos para subir/bajar calidad en Raspberry.
+
+Update 2026-05-19 pull-up NO buttons:
+- Raspberry/GPIO queda con defaults `GPIO_PULL_UP=1`, `GPIO_BUTTON_MODE=NO`: reposo `HIGH`, presion `LOW`, y `pressed:true` cuando el boton NO conecta el pin a `GND`.
+- `gpio_ws_bridge.py` calcula el nivel electrico `HIGH/LOW` antes de normalizar `pressed`, manteniendo compatibilidad con otros cableados via `GPIO_PULL_UP` y `GPIO_BUTTON_MODE`.
+- `start.sh`, `game-omo-paraguay-albiroja.service` y `test.py` usan el nuevo default pull-up/NO.
+- Sketch Arduino Nano usa `INPUT_PULLUP`, `PRESSED_LEVEL=LOW` y envia ready con `restLevel=HIGH`, `pressedLevel=LOW`; no requiere resistencias externas.
+- README actualizado con cableado: pin al terminal `NO`, `COM` a `GND`, sin `V+` externo para Raspberry ni Arduino.
+- Validado con `py_compile`, `bash -n start.sh`, `node --check game.js`, `git diff --check` y prueba local de normalizacion: default pull-up/NO da `HIGH -> false`, `LOW -> true`.
